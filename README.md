@@ -1,6 +1,6 @@
 # Computer-Science-Project-Repository
-# This is a Computer science subject module project within the spring 2026 semester at Roskilde University. 
-# Authors: Sindhuja Varma Dantuluri, Jalte Dan Eliasen, Ayperi Akkas, Anne Margaret Lorenzen, Alisha Noor Ahmed
+This is a Computer science subject module project within the spring 2026 semester at Roskilde University. 
+Authors: Sindhuja Varma Dantuluri, Jalte Dan Eliasen, Ayperi Akkas, Anne Margaret Lorenzen, Alisha Noor Ahmed
 
 Table of contents 
 
