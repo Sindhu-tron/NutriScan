@@ -1,0 +1,827 @@
+{
+  "_metadata": {
+    "description": "Dish-to-ingredient mappings for Madservice Roskilde Kommune menus (March-April 2026)",
+    "source": "Manually compiled from Danish culinary knowledge and institutional cooking practices",
+    "frida_version": "5.5",
+    "last_updated": "2026-03",
+    "notes": "Ingredients are listed as base components for Frida fuzzy matching. Quantities are not included here — portion scaling is handled separately in nutrient_lookup.py"
+  },
+
+  "meat": {
+    "Bøf stroganoff": {
+      "ingredients": ["oksekød", "fløde", "løg", "champignon", "tomatpuré", "smør"],
+      "kostform": "normalkost"
+    },
+    "Frikadeller": {
+      "ingredients": ["svinekød", "kalvekød", "æg", "hvedemel", "løg", "mælk", "smør"],
+      "kostform": "normalkost"
+    },
+    "Paneret kotelet": {
+      "ingredients": ["svinekotelet", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Brunkål": {
+      "ingredients": ["hvidkål", "bacon", "svinekød", "smør", "sukker"],
+      "kostform": "normalkost"
+    },
+    "Indisk curry": {
+      "ingredients": ["kylling", "kokosmælk", "karry", "løg", "hvidløg", "ingefær", "tomat"],
+      "kostform": "normalkost"
+    },
+    "Kylling": {
+      "ingredients": ["kylling", "smør"],
+      "kostform": "normalkost"
+    },
+    "Mørbrad med bacon": {
+      "ingredients": ["svinemørbrad", "bacon", "fløde", "løg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Medister": {
+      "ingredients": ["medisterpølse", "svinekød", "fedt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Hakkebøf": {
+      "ingredients": ["oksekød", "løg", "smør", "æg"],
+      "kostform": "normalkost"
+    },
+    "Æbleflæsk": {
+      "ingredients": ["flæsk", "æble", "løg", "smør", "sukker"],
+      "kostform": "normalkost"
+    },
+    "Sprængt kam": {
+      "ingredients": ["svinekam", "salt", "vand"],
+      "kostform": "normalkost"
+    },
+    "Revelsesben": {
+      "ingredients": ["svineribs", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Kylling i karry": {
+      "ingredients": ["kylling", "karry", "løg", "fløde", "ris"],
+      "kostform": "normalkost"
+    },
+    "Brændene kærlighed": {
+      "ingredients": ["kartoffel", "bacon", "løg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Forloren hare": {
+      "ingredients": ["oksekød", "svinekød", "æg", "rasp", "bacon", "løg"],
+      "kostform": "normalkost"
+    },
+    "Kalkunschnitzel": {
+      "ingredients": ["kalkun", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Enebærgryde": {
+      "ingredients": ["svinekød", "enebær", "fløde", "løg", "gulerødder"],
+      "kostform": "normalkost"
+    },
+    "Rullesteg/svesker": {
+      "ingredients": ["svinekød", "svesker", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Pølser": {
+      "ingredients": ["svinepølse", "svinekød", "fedt"],
+      "kostform": "normalkost"
+    },
+    "Kalvehjerter": {
+      "ingredients": ["kalvehjerte", "løg", "fløde", "smør"],
+      "kostform": "normalkost"
+    },
+    "Skinkefarsbrød": {
+      "ingredients": ["skinke", "svinekød", "æg", "rasp", "løg"],
+      "kostform": "normalkost"
+    },
+    "Paneret krebinet": {
+      "ingredients": ["svinekød", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Nakkesteg": {
+      "ingredients": ["svinekam", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Kalkungryde": {
+      "ingredients": ["kalkun", "fløde", "løg", "champignon", "gulerødder"],
+      "kostform": "normalkost"
+    },
+    "Hamburgerryg": {
+      "ingredients": ["hamburgerryg", "svinekød", "salt"],
+      "kostform": "normalkost"
+    },
+    "Mørbrad á la créme": {
+      "ingredients": ["svinemørbrad", "fløde", "løg", "champignon", "smør"],
+      "kostform": "normalkost"
+    },
+    "Coq au vin": {
+      "ingredients": ["kylling", "rødvin", "bacon", "champignon", "løg", "tomat"],
+      "kostform": "normalkost"
+    },
+    "Flæskesteg": {
+      "ingredients": ["svinekam", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Lammesteg": {
+      "ingredients": ["lam", "hvidløg", "rosmarin", "salt", "smør"],
+      "kostform": "normalkost"
+    },
+    "Stegt kalvelever": {
+      "ingredients": ["kalvelever", "bacon", "løg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Biksemad": {
+      "ingredients": ["kartoffel", "svinekød", "løg", "æg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Braiseret svinekæbe": {
+      "ingredients": ["svinekæbe", "løg", "gulerødder", "selleri", "rødvin", "smør"],
+      "kostform": "normalkost"
+    },
+    "Porchetta": {
+      "ingredients": ["svinekød", "fennikel", "hvidløg", "rosmarin", "salt"],
+      "kostform": "normalkost"
+    },
+    "Farseret kalkunbryst": {
+      "ingredients": ["kalkun", "æg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Mørbradgryde": {
+      "ingredients": ["svinemørbrad", "fløde", "løg", "champignon", "paprika"],
+      "kostform": "normalkost"
+    },
+    "Stegt kylling": {
+      "ingredients": ["kylling", "smør", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Krebinet": {
+      "ingredients": ["svinekød", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Farsbrød": {
+      "ingredients": ["oksekød", "svinekød", "æg", "rasp", "løg", "bacon"],
+      "kostform": "normalkost"
+    },
+    "Kogt kylling": {
+      "ingredients": ["kylling", "salt", "vand", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Bankekød (okse)": {
+      "ingredients": ["oksekød", "løg", "gulerødder", "smør", "mel"],
+      "kostform": "normalkost"
+    },
+    "Sprængt nakke": {
+      "ingredients": ["svinekam", "salt", "vand"],
+      "kostform": "normalkost"
+    },
+    "Forloren and": {
+      "ingredients": ["svinekød", "svesker", "æble", "salt", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Gartnerens gryde": {
+      "ingredients": ["svinekød", "gulerødder", "kartoffel", "løg", "selleri"],
+      "kostform": "normalkost"
+    },
+    "Kyllingefrikadeller": {
+      "ingredients": ["kylling", "æg", "mel", "løg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Paprikagryde": {
+      "ingredients": ["svinekød", "paprika", "løg", "tomat", "fløde"],
+      "kostform": "normalkost"
+    },
+    "Selleristicks": {
+      "ingredients": ["selleri", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Paneret selleristick": {
+      "ingredients": ["selleri", "æg", "rasp", "smør"],
+      "kostform": "normalkost"
+    },
+    "Tarteletter": {
+      "ingredients": ["tærteform", "asparges", "kylling", "fløde", "æg"],
+      "kostform": "normalkost"
+    }
+  },
+
+  "fish": {
+    "Fiskefrikadeller": {
+      "ingredients": ["fisk", "æg", "mel", "løg", "smør"],
+      "kostform": "normalkost"
+    },
+    "Bagt torsk": {
+      "ingredients": ["torsk", "smør", "citron", "krydderier"],
+      "kostform": "normalkost"
+    },
+    "Fiskelasagne": {
+      "ingredients": ["fisk", "pasta", "fløde", "ost", "tomat", "løg"],
+      "kostform": "normalkost"
+    },
+    "Stegt fisk": {
+      "ingredients": ["fisk", "smør", "citron", "mel"],
+      "kostform": "normalkost"
+    },
+    "Hjemmerøget laks": {
+      "ingredients": ["laks", "salt", "sukker"],
+      "kostform": "normalkost"
+    },
+    "Gratineret mørksej": {
+      "ingredients": ["mørksej", "fløde", "ost", "citron", "smør"],
+      "kostform": "normalkost"
+    },
+    "Fisk florentine": {
+      "ingredients": ["fisk", "spinat", "fløde", "ost", "smør"],
+      "kostform": "normalkost"
+    }
+  },
+
+  "vegetarian": {
+    "Grøntsagsfrikadeller": {
+      "ingredients": ["gulerødder", "løg", "æg", "mel", "ost"],
+      "kostform": "vegetar"
+    },
+    "Grøntsagsmousakka": {
+      "ingredients": ["aubergine", "tomat", "løg", "ost", "æg", "fløde"],
+      "kostform": "vegetar"
+    },
+    "Kartoffelgratin": {
+      "ingredients": ["kartoffel", "fløde", "ost", "løg", "smør"],
+      "kostform": "vegetar"
+    },
+    "Svampestroganoff": {
+      "ingredients": ["champignon", "fløde", "løg", "tomatpuré", "smør"],
+      "kostform": "vegetar"
+    },
+    "Svampefrikadeller": {
+      "ingredients": ["champignon", "æg", "mel", "løg", "smør"],
+      "kostform": "vegetar"
+    },
+    "Tarteletter": {
+      "ingredients": ["tærteform", "asparges", "svampe", "fløde", "æg"],
+      "kostform": "vegetar"
+    },
+    "Falafel": {
+      "ingredients": ["kikærter", "løg", "hvidløg", "persille", "spidskommen"],
+      "kostform": "vegetar"
+    },
+    "Kartoffeltimbale": {
+      "ingredients": ["kartoffel", "æg", "fløde", "ost", "smør"],
+      "kostform": "vegetar"
+    },
+    "Grøntsagskrebinet": {
+      "ingredients": ["gulerødder", "løg", "æg", "rasp", "mel"],
+      "kostform": "vegetar"
+    },
+    "Grøntsagstærte": {
+      "ingredients": ["tærtedej", "gulerødder", "løg", "æg", "fløde", "ost"],
+      "kostform": "vegetar"
+    },
+    "Vegetarboller": {
+      "ingredients": ["linser", "gulerødder", "løg", "æg", "mel"],
+      "kostform": "vegetar"
+    },
+    "Vegetarfrikadeller": {
+      "ingredients": ["gulerødder", "kikærter", "æg", "mel", "løg"],
+      "kostform": "vegetar"
+    },
+    "Vegetarisk farsbrød": {
+      "ingredients": ["linser", "gulerødder", "løg", "æg", "mel"],
+      "kostform": "vegetar"
+    },
+    "Vegetarisk farsrulle": {
+      "ingredients": ["linser", "gulerødder", "løg", "æg", "mel"],
+      "kostform": "vegetar"
+    },
+    "Bolognese(vegansk)": {
+      "ingredients": ["linser", "tomat", "løg", "hvidløg", "gulerødder", "selleri"],
+      "kostform": "vegetar"
+    },
+    "Hakkebøf(vegetar)": {
+      "ingredients": ["rødbede", "linser", "løg", "æg", "mel"],
+      "kostform": "vegetar"
+    },
+    "Rødbedebøf": {
+      "ingredients": ["rødbede", "kikærter", "løg", "æg", "mel"],
+      "kostform": "vegetar"
+    },
+    "Spinatpinde": {
+      "ingredients": ["spinat", "ost", "æg", "mel", "smør"],
+      "kostform": "vegetar"
+    },
+    "Broccoli/ost kroket": {
+      "ingredients": ["broccoli", "ost", "æg", "rasp", "mel"],
+      "kostform": "vegetar"
+    },
+    "Paneret hallouni": {
+      "ingredients": ["halloumi", "æg", "rasp", "smør"],
+      "kostform": "vegetar"
+    },
+    "Kartoffeltærte": {
+      "ingredients": ["kartoffel", "tærtedej", "fløde", "æg", "ost"],
+      "kostform": "vegetar"
+    },
+    "Pastagratin": {
+      "ingredients": ["pasta", "fløde", "ost", "løg", "tomat"],
+      "kostform": "vegetar"
+    },
+    "Gulerodssuppe": {
+      "ingredients": ["gulerødder", "løg", "fløde", "ingefær", "smør"],
+      "kostform": "vegetar"
+    },
+    "Soyakød": {
+      "ingredients": ["sojaprotein", "løg", "tomat", "krydderier"],
+      "kostform": "vegetar"
+    },
+    "Nøddesteg": {
+      "ingredients": ["nødder", "æg", "løg", "mel", "ost"],
+      "kostform": "vegetar"
+    },
+    "Chunks,planteprotein": {
+      "ingredients": ["sojaprotein", "løg", "krydderier"],
+      "kostform": "vegetar"
+    },
+    "Chunksgryde": {
+      "ingredients": ["sojaprotein", "gulerødder", "løg", "tomat", "kartoffel"],
+      "kostform": "vegetar"
+    },
+    "Falafelbøf/spinat": {
+      "ingredients": ["kikærter", "spinat", "løg", "hvidløg", "krydderier"],
+      "kostform": "vegetar"
+    },
+    "Grøntsagsbiksemad": {
+      "ingredients": ["kartoffel", "gulerødder", "løg", "æg", "peberfrugt"],
+      "kostform": "vegetar"
+    },
+    "Gratin/sød kartoffel": {
+      "ingredients": ["sød kartoffel", "fløde", "ost", "løg", "smør"],
+      "kostform": "vegetar"
+    },
+    "Vegetarisk brændene kærlighed": {
+      "ingredients": ["kartoffel", "rødfrugt", "løg", "smør"],
+      "kostform": "vegetar"
+    }
+  },
+
+  "desserts": {
+    "Citronfromage": {
+      "ingredients": [
+        "æg",
+        "fløde",
+        "sukker",
+        "citronsaft"
+      ],
+      "kostform": "normalkost"
+    },
+    "Cheesecake i glas": {
+      "ingredients": [
+        "flødeost",
+        "fløde",
+        "sukker",
+        "digestive"
+      ],
+      "kostform": "normalkost"
+    },
+    "Skovbærtærte": {
+      "ingredients": [
+        "tærtedej",
+        "fløde",
+        "bær",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Hvid chokolademousse": {
+      "ingredients": [
+        "hvid chokolade",
+        "fløde",
+        "æg",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Æblegrød": {
+      "ingredients": [
+        "æble",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Kirsebærmousse": {
+      "ingredients": [
+        "kirsebær",
+        "fløde",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Pære": {
+      "ingredients": [
+        "pære"
+      ],
+      "kostform": "normalkost"
+    },
+    "Romfromage": {
+      "ingredients": [
+        "æg",
+        "fløde",
+        "sukker",
+        "rom"
+      ],
+      "kostform": "normalkost"
+    },
+    "Is": {
+      "ingredients": [
+        "fløde",
+        "mælk",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Vanillebudding": {
+      "ingredients": [
+        "mælk",
+        "sukker",
+        "æg",
+        "majsstivelse"
+      ],
+      "kostform": "normalkost"
+    },
+    "Fløderand": {
+      "ingredients": [
+        "fløde",
+        "mælk",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Blommegrød": {
+      "ingredients": [
+        "blomme",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Hindbærdessert": {
+      "ingredients": [
+        "hindbær",
+        "fløde",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Cognacmousse": {
+      "ingredients": [
+        "æg",
+        "fløde",
+        "sukker",
+        "cognac"
+      ],
+      "kostform": "normalkost"
+    },
+    "Gammeldags æblekage": {
+      "ingredients": [
+        "æble",
+        "rasp",
+        "fløde",
+        "sukker",
+        "smør"
+      ],
+      "kostform": "normalkost"
+    },
+    "Pandekage": {
+      "ingredients": [
+        "æg",
+        "mælk",
+        "hvedemel",
+        "smør",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Rødgrød": {
+      "ingredients": [
+        "bær",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Citrondessert": {
+      "ingredients": [
+        "fløde",
+        "sukker",
+        "citronsaft",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Tiramisu i glas": {
+      "ingredients": [
+        "mascarpone",
+        "æg",
+        "sukker",
+        "kaffe",
+        "ladyfinger"
+      ],
+      "kostform": "normalkost"
+    },
+    "Blommer i rom": {
+      "ingredients": [
+        "blomme",
+        "sukker",
+        "rom"
+      ],
+      "kostform": "normalkost"
+    },
+    "Chokoladebudding": {
+      "ingredients": [
+        "mælk",
+        "chokolade",
+        "sukker",
+        "majsstivelse",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Ymerfromage": {
+      "ingredients": [
+        "ymer",
+        "fløde",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Fersken": {
+      "ingredients": [
+        "fersken"
+      ],
+      "kostform": "normalkost"
+    },
+    "Alliancegrød": {
+      "ingredients": [
+        "gryn",
+        "mælk",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Abrikostrifli": {
+      "ingredients": [
+        "abrikos",
+        "fløde",
+        "sukker",
+        "kage"
+      ],
+      "kostform": "normalkost"
+    },
+    "Bagt æblekage": {
+      "ingredients": [
+        "æble",
+        "sukker",
+        "smør",
+        "mel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Kirsebærgrød": {
+      "ingredients": [
+        "kirsebær",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Isdessert med knas": {
+      "ingredients": [
+        "fløde",
+        "mælk",
+        "sukker",
+        "æg",
+        "nødder"
+      ],
+      "kostform": "normalkost"
+    },
+    "Baileysfromage": {
+      "ingredients": [
+        "fløde",
+        "æg",
+        "sukker",
+        "baileys"
+      ],
+      "kostform": "normalkost"
+    },
+    "Solbærsuppe": {
+      "ingredients": [
+        "solbær",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Hindbærgrød": {
+      "ingredients": [
+        "hindbær",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Chokoladeparfait": {
+      "ingredients": [
+        "chokolade",
+        "fløde",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Rabarbertrifli": {
+      "ingredients": [
+        "rabarber",
+        "fløde",
+        "sukker",
+        "kage"
+      ],
+      "kostform": "normalkost"
+    },
+    "Fragelitéroulade": {
+      "ingredients": [
+        "æg",
+        "sukker",
+        "mel",
+        "fløde",
+        "bær"
+      ],
+      "kostform": "normalkost"
+    },
+    "Islagkage": {
+      "ingredients": [
+        "fløde",
+        "mælk",
+        "sukker",
+        "æg",
+        "kage"
+      ],
+      "kostform": "normalkost"
+    },
+    "Rabarbersuppe (lun)": {
+      "ingredients": [
+        "rabarber",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Nougatfromage": {
+      "ingredients": [
+        "nougat",
+        "fløde",
+        "æg",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Abrikosgrød": {
+      "ingredients": [
+        "abrikos",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Vafler": {
+      "ingredients": [
+        "æg",
+        "mælk",
+        "hvedemel",
+        "smør",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Appelsinfromage": {
+      "ingredients": [
+        "appelsinsaft",
+        "fløde",
+        "æg",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Svesketrifli": {
+      "ingredients": [
+        "svesker",
+        "fløde",
+        "sukker",
+        "kage"
+      ],
+      "kostform": "normalkost"
+    },
+    "Bondepige": {
+      "ingredients": [
+        "æble",
+        "rasp",
+        "fløde",
+        "sukker",
+        "smør"
+      ],
+      "kostform": "normalkost"
+    },
+    "Rabarbergrød": {
+      "ingredients": [
+        "rabarber",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Citronflødeis": {
+      "ingredients": [
+        "fløde",
+        "citronsaft",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Pistaciefromage": {
+      "ingredients": [
+        "fløde",
+        "pistacie",
+        "sukker",
+        "æg"
+      ],
+      "kostform": "normalkost"
+    },
+    "Rabarber crumble": {
+      "ingredients": [
+        "rabarber",
+        "mel",
+        "smør",
+        "sukker",
+        "havregryn"
+      ],
+      "kostform": "normalkost"
+    },
+    "Chokolademousse": {
+      "ingredients": [
+        "chokolade",
+        "fløde",
+        "æg",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Bærsuppe": {
+      "ingredients": [
+        "bær",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Yoghurtdessert": {
+      "ingredients": [
+        "yoghurt",
+        "frugt",
+        "sukker"
+      ],
+      "kostform": "normalkost"
+    },
+    "Stikkelsbærgrød": {
+      "ingredients": [
+        "stikkelsbær",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    },
+    "Panna cotta": {
+      "ingredients": [
+        "fløde",
+        "sukker",
+        "gelatine",
+        "vanilje"
+      ],
+      "kostform": "normalkost"
+    },
+    "Cocktailfromage": {
+      "ingredients": [
+        "fløde",
+        "sukker",
+        "æg",
+        "frugt"
+      ],
+      "kostform": "normalkost"
+    },
+    "Solbær/ribsgrød": {
+      "ingredients": [
+        "solbær",
+        "ribs",
+        "sukker",
+        "kartoffelmel"
+      ],
+      "kostform": "normalkost"
+    }
+  }
+}
+
