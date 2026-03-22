@@ -1,0 +1,10 @@
+pandas
+openpyxl
+rapidfuzz
+pdfplumber
+fastapi
+uvicorn
+dash
+plotly
+sqlalchemy
+pytest
