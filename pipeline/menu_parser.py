@@ -1,16 +1,16 @@
 """
-Parses Madservice Roskilde Kommune weekly menu PDFs into structured meal records ready for ingredient lookup and nutrition scoring.
+This module reads the weekly menu PDF from Madservice Roskilde Kommune and extracts the meals into a structured format that the rest of the pipeline can work with.
 
-Input: Path to a PDF menu file (e.g. menuplan-marts-2026.pdf) Output: List of dicts, one per day, with keys:
+The menu has a two-column layout where the main dish and dessert are on the same line but in different columns. We use pdfplumber to get the x-position of each word so we can tell which column it belongs to.
+
+Input: Path to a PDF menu file (e.g. menuplan-marts-2026.pdf) 
+Output: List of dicts, one per day, with keys:
             - day_number (int)
             - day_name (str)
             - main (str) 
             - sides (list of str)
             - dessert (str)
             - vegetarian (bool) 
-
-Strategy: The Roskilde menu has a consistent two-column layout. pdfplumber exposes the x-coordinate of every word. Words with x0 < COLUMN_SPLIT belong to the 
-left column (day name, main dish, sides). Words with x0 >= COLUMN_SPLIT belong to the right column (dessert).This cleanly separates main dishes from desserts without guesswork.
 
 Usage: 
 
@@ -19,68 +19,61 @@ Usage:
 import re
 import pdfplumber
 
-# x-coordinate threshold separating left column from right column.
-# Determined by inspecting word positions in the Roskilde PDF:
-# main dish words have x0 ~68-270, dessert words start at x0 ~357.
-# 300 is a safe midpoint.
+# Words in the left column (main dish side) have x position below 300 and words in the right column (dessert side) have x position above 300.
+# We figured this out by printing the x positions of all words in the PDF.
 COLUMN_SPLIT = 300
 
-# Danish day name abbreviations (started with sunday, cause themenu starts that way)
+# The menu uses these abbreviations for the days of the week
 DAY_NAMES = {"SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"}
  
-# Connector words to strip when cleaning sides
-SIDES_STRIP_WORDS = {"med", "og", "samt", "på", "i", "af"}
+# These small words appear in the sides line but are not ingredients
+WORDS_TO_IGNORE = {"med", "og", "samt", "på", "i", "af"}
 
-def _clean_sides(sides_text):
+def clean_sides(sides_text):
     """
-    Cleans the raw sides string into a list of individual side names.
+    Takes the raw sides text from the menu and returns a list of individual side dish names.
  
-    Example:
-        "Med kartoffelmos og drueagurker" -> ["kartoffelmos", "drueagurker"]
-        "(Vegetarisk) med rodfrugter"     -> ["rodfrugter"]
- 
-    Parameters:
-        sides_text (str): Raw sides line from the menu.
- 
-    Returns:
-        list[str]: Cleaned list of side dish names.
+    For example:
+        "Med kartoffelmos og drueagurker" becomes ["kartoffelmos", "drueagurker"]
+        "(Vegetarisk) med rodfrugter" becomes ["rodfrugter"]
     """
-    text = re.sub(r'\(vegetarisk\)', '', sides_text, flags=re.IGNORECASE).strip()
+    # Remove the vegetarian label if it is there
+    text = re.sub(r'\(vegetarisk\)', '', sides_text, flags=re.IGNORECASE)
+    text = text.strip()
+ 
+    # Remove leading connector words like "Med", "På" etc.
     text = re.sub(r'^\s*(med|på|i|af)\s+', '', text, flags=re.IGNORECASE)
+ 
+    # Split the text on commas, "og", and "samt"
     parts = re.split(r',|\bog\b|\bsamt\b', text, flags=re.IGNORECASE)
-    cleaned = []
+ 
+    # Clean up each part and skip empty strings and connector words
+    result = []
     for part in parts:
         part = part.strip().lower()
-        if part and part not in SIDES_STRIP_WORDS and len(part) > 2:
-            cleaned.append(part)
-    return cleaned
+        if part and part not in WORDS_TO_IGNORE and len(part) > 2:
+            result.append(part)
+ 
+    return result
  
 
-def _is_vegetarian(text):
+def is_vegetarian(text):
     """
-    Returns True if the text contains a vegetarian marker.
- 
-    Parameters:
-        text (str): Any text from the menu line.
- 
-    Returns:
-        bool
+    Returns True if the text contains the vegetarian label.
     """
     return bool(re.search(r'\(vegetarisk\)', text, re.IGNORECASE))
  
  
-def _extract_rows(pdf_path):
+def get_rows_from_pdf(pdf_path):
     """
-    Opens the PDF and extracts each text row as (left_text, right_text)
-    using word x-positions to separate the two columns.
- 
-    Parameters:
-        pdf_path (str): Path to the PDF file.
- 
-    Returns:
-        list[tuple]: Each item is (left_col_text, right_col_text).
+    Opens the PDF and reads all the text rows.
+    
+    Each row is returned as a tuple of (left_column_text, right_column_text).
+    We split by x position - words below 300 are in the left column (main dish), words above 300 are in the right column (dessert).
+    
+    Header and footer lines are skipped.
     """
-    rows = []
+    all_rows = []
  
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -88,68 +81,86 @@ def _extract_rows(pdf_path):
             if not words:
                 continue
  
-            # Group words by vertical position (round to 2px to cluster same line)
+            # Group words into lines based on their vertical position. We round to the nearest 2 pixels because words on the same line can have slightly different vertical positions in the PDF.
             lines = {}
             for word in words:
                 line_key = round(word['top'] / 2) * 2
-                lines.setdefault(line_key, []).append(word)
+                if line_key not in lines:
+                    lines[line_key] = []
+                lines[line_key].append(word)
  
+            # Go through each line from top to bottom
             for line_key in sorted(lines.keys()):
                 line_words = lines[line_key]
-                left_words = [w['text'] for w in line_words if w['x0'] < COLUMN_SPLIT]
-                right_words = [w['text'] for w in line_words if w['x0'] >= COLUMN_SPLIT]
+ 
+                # Split words into left and right column based on x position
+                left_words = []
+                right_words = []
+                for word in line_words:
+                    if word['x0'] < COLUMN_SPLIT:
+                        left_words.append(word['text'])
+                    else:
+                        right_words.append(word['text'])
  
                 left_text = ' '.join(left_words).strip()
                 right_text = ' '.join(right_words).strip()
  
+                # Skip empty lines
                 if not left_text:
                     continue
+ 
+                # Skip the header and footer lines
                 if left_text.startswith("MADSERVICE") or left_text.startswith("Periode"):
                     continue
                 if "allergener" in left_text.lower():
                     continue
  
-                rows.append((left_text, right_text))
+                all_rows.append((left_text, right_text))
  
-    return rows
+    return all_rows
  
  
 def parse_menu(pdf_path):
     """
-    Main entry point. Parses a Roskilde menu PDF into structured meal records.
- 
-    Parameters:
-        pdf_path (str): Path to the menu PDF file.
- 
-    Returns:
-        list[dict]: One dict per day with keys:
-                    day_number, day_name, main, sides, dessert, vegetarian
+    Main function. Takes a path to a menu PDF and returns a list of meal dictionaries, one for each day in the menu.
     """
-    rows = _extract_rows(pdf_path)
+    rows = get_rows_from_pdf(pdf_path)
     meals = []
  
     i = 0
     while i < len(rows):
-        left, right = rows[i]
-        tokens = left.split()
+        left_text, right_text = rows[i]
+        words = left_text.split()
  
-        if tokens and tokens[0] in DAY_NAMES:
-            day_name = tokens[0]
-            main = ' '.join(tokens[1:]).strip()
-            dessert = right.strip()
+        # Check if this row starts with a day name like "MAN" or "TIR"
+        if words and words[0] in DAY_NAMES:
+            day_name = words[0]
  
+            # The main dish name is the rest of the left column
+            main = ' '.join(words[1:]).strip()
+ 
+            # The dessert is in the right column
+            dessert = right_text.strip()
+ 
+            # The next row should have the day number and the sides
             day_number = None
             sides = []
             vegetarian = False
  
             if i + 1 < len(rows):
-                next_left, _ = rows[i + 1]
-                next_tokens = next_left.split()
-                if next_tokens and next_tokens[0].isdigit():
-                    day_number = int(next_tokens[0])
-                    sides_text = ' '.join(next_tokens[1:])
-                    vegetarian = _is_vegetarian(sides_text)
-                    sides = _clean_sides(sides_text)
+                next_left, next_right = rows[i + 1]
+                next_words = next_left.split()
+ 
+                # Check if the next row starts with a number (the day number)
+                if next_words and next_words[0].isdigit():
+                    day_number = int(next_words[0])
+ 
+                    # The sides are the rest of the text on that row
+                    sides_text = ' '.join(next_words[1:])
+                    vegetarian = is_vegetarian(sides_text)
+                    sides = clean_sides(sides_text)
+ 
+                    # Skip the sides row since we already read it
                     i += 1
  
             meals.append({
@@ -166,35 +177,40 @@ def parse_menu(pdf_path):
     return meals
  
  
-# ---------------------------------------------------------------------------
-# SELF-TEST — run directly: python3 menu_parser.py [path_to_pdf] (generated content cause I was confused!!)
-# ---------------------------------------------------------------------------
+# This block only runs when you execute this file directly. It's used for testing the module during development.
+# Example: python pipeline/menu_parser.py sample_data/menuplan-marts-2026.pdf
 if __name__ == "__main__":
     import sys
  
-    pdf_path = sys.argv[1] if len(sys.argv) > 1 else \
-        "/mnt/user-data/uploads/menuplan-marts-2026.pdf"
+    # Use the file path from the command line, or default to March menu
+    if len(sys.argv) > 1:
+        pdf_path = sys.argv[1]
+    else:
+        pdf_path = "sample_data/menuplan-marts-2026.pdf"
  
-    print(f"Parsing: {pdf_path}\n")
+    print("Parsing:", pdf_path)
+    print()
+ 
     meals = parse_menu(pdf_path)
-    print(f"Found {len(meals)} meals\n")
+    print("Found", len(meals), "meals")
+    print()
  
-    errors = 0
+    warnings = 0
     for meal in meals:
-        veg_flag = " [VEGETARISK]" if meal["vegetarian"] else ""
-        print(f"Day {str(meal['day_number']):>2} {meal['day_name']}  "
-              f"Main: {meal['main']:<30} "
-              f"Dessert: {meal['dessert']:<28}"
-              f"{veg_flag}")
-        print(f"           Sides: {meal['sides']}")
+        veg_label = " [VEGETARISK]" if meal["vegetarian"] else ""
+        print("Day", meal["day_number"], meal["day_name"])
+        print("  Main:    ", meal["main"])
+        print("  Dessert: ", meal["dessert"])
+        print("  Sides:   ", meal["sides"])
+        print("  " + veg_label if veg_label else "")
  
-        if not meal['main']:
-            print("  !! WARNING: empty main dish")
-            errors += 1
-        if not meal['dessert']:
-            print("  !! WARNING: empty dessert")
-            errors += 1
+        # Basic checks
+        if not meal["main"]:
+            print("  WARNING: no main dish found")
+            warnings += 1
+        if not meal["dessert"]:
+            print("  WARNING: no dessert found")
+            warnings += 1
         print()
  
-    print(f"Parsing complete. {len(meals)} meals, {errors} warnings.")
- 
+    print("Done.", len(meals), "meals parsed,", warnings, "warnings.")
