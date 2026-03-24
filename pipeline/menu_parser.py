@@ -167,7 +167,7 @@ def parse_menu(pdf_path):
  
  
 # ---------------------------------------------------------------------------
-# SELF-TEST — run directly: python3 menu_parser.py [path_to_pdf]
+# SELF-TEST — run directly: python3 menu_parser.py [path_to_pdf] (generated content cause I was confused!!)
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
