@@ -15,14 +15,17 @@
   "meat": {
     "Bøf stroganoff": {
       "ingredients": ["oksekød", "løg", "champignon", "paprika", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Frikadeller": {
       "ingredients": ["svinekød", "løg", "æg", "mælk", "hvedemel", "rasp", "smør", "salt", "sort peber", "muskatnød"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Paneret kotelet": {
       "ingredients": ["svinekotelet", "æg", "hvedemel", "rasp", "smør", "planteolie", "salt", "sort peber", "citron", "persille"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Brunkål": {
@@ -31,28 +34,34 @@
     },
     "Indisk curry": {
       "ingredients": ["kylling", "løg", "hvidløg", "ingefær", "karry", "kokosmælk", "tomat", "planteolie", "ris", "salt"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Kylling": {
       "ingredients": ["kylling", "løg", "smør", "hvedemel", "kyllingebouillon", "sojasauce", "gulerod", "ingefær", "hvidløg", "sort peber"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Mørbrad med bacon": {
       "ingredients": ["svinemørbrad", "bacon", "løg", "fløde", "smør", "hvidløg", "sennep", "champignon", "salt", "sort peber"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Medister": {
       "ingredients": ["medisterpølse", "løg", "smør", "gulerod", "hvide bønner", "sennep", "salt", "sort peber", "laurbærblad", "eddike"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "Hakkebøf": {
       "ingredients": ["oksekød", "løg", "smør", "salt", "sort peber", "worcestershire sauce", "æg", "hvedemel", "oksebouillon", "sukker"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
 
   "fish": {
     "Fiskefrikadeller": {
       "ingredients": ["torskefilet", "æg", "mælk", "hvedemel", "løg", "smør", "salt",  "sort peber", "muskatnød", "citron"],
+      "amounts_g": [],
       "kostform": "normalkost"
     },
     "_note": "To be completed - see meat dishes above as reference for format"
