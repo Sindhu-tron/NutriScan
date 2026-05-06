@@ -1,107 +1,110 @@
-import pandas as pd
-from rapidfuzz import process, fuzz
+"""
+frida_matcher.py
+----------------
+Responsibility:
+- Load food names from the Frida 5.5 Data_Table (same sheet as nutrient_lookup.py)
+- Fuzzy match Danish ingredient names to exact Frida food names
+
+"""
+
 import pandas as pd
 from rapidfuzz import process, fuzz
 
-# If the match score is below this number, we flag it so someone can check it manually
+# Matches below this confidence score are flagged for manual review
 THRESHOLD = 80
 
-# Load the food names and IDs from the Frida Excel file
+
 def load_frida(filepath):
-    # Read the "Food" sheet from the Excel file
-    df = pd.read_excel(filepath, sheet_name="Food")
+    """
+    Loads food names from the Frida 5.5 Data_Table sheet.
 
-    # Only keep the columns we need
-    df = df[["FødevareNavn", "FoodID"]]
+    """
+    df = pd.read_excel(
+        filepath,
+        sheet_name="Data_Table",
+        header=3,
+        index_col=0,
+        engine="openpyxl",
+    )
 
-    # Remove rows where the food name is missing
-    df = df.dropna()
+    food_names = df.index.astype(str).str.strip()
 
-    return df
+    result = pd.DataFrame({
+        "FødevareNavn": food_names,
+        "FoodID": range(len(food_names))
+    }).reset_index(drop=True)
 
-
-# This function takes one ingredient name and finds the best match in Frida
-def match_ingredient(ingredient, frida_df):
-    # Get all the Danish food names as a list
-    food_names = frida_df["FødevareNavn"].tolist()
-
-    # Use rapidfuzz to find the best match
-    # WRatio is good at matching even if the word order is different
-    best_match, score, index = process.extractOne(ingredient, food_names, scorer=fuzz.WRatio)
-
-    # Get the ID of the matched food
-    frida_id = frida_df.iloc[index]["FoodID"]
-
-    # Round the score to 1 decimal place so it is easier to read
-    score = round(score, 1)
-
-    # If the score is too low, flag it for manual review
-    if score < THRESHOLD:
-        flagged = True
-    else:
-        flagged = False
-
-    # Put the results in a dictionary and return it
-    result = {
-        "query": ingredient,
-        "matched_name": best_match,
-        "frida_id": frida_id,
-        "confidence": score,
-        "flagged_for_review": flagged
-    }
+    result = result.dropna(subset=["FødevareNavn"])
+    result = result[result["FødevareNavn"] != "nan"]
+    result = result[result["FødevareNavn"].str.len() > 1]
 
     return result
 
 
-# This function matches a whole list of ingredients at once
+def match_ingredient(ingredient, frida_df):
+    """
+    Finds the best matching Frida food name for a Danish ingredient name.
+
+    Args:
+        ingredient: Danish ingredient name (e.g. "oksekød", "kartoffel")
+        frida_df:   DataFrame from load_frida()
+
+    Returns:
+        dict with keys: query, matched_name, frida_id, confidence,
+        flagged_for_review
+    """
+    food_names = frida_df["FødevareNavn"].tolist()
+
+    best_match, score, index = process.extractOne(
+        ingredient, food_names, scorer=fuzz.WRatio
+    )
+
+    frida_id = frida_df.iloc[index]["FoodID"]
+    score = round(score, 1)
+
+    return {
+        "query":              ingredient,
+        "matched_name":       best_match,
+        "frida_id":           frida_id,
+        "confidence":         score,
+        "flagged_for_review": score < THRESHOLD,
+    }
+
+
 def match_all_ingredients(ingredients, frida_df):
-    all_results = []
-
-    # Loop through each ingredient and match it
-    for ingredient in ingredients:
-        result = match_ingredient(ingredient, frida_df)
-        all_results.append(result)
-
-    # Convert the list to a dataframe so it is easier to work with
-    results_df = pd.DataFrame(all_results)
-
-    return results_df
+    """
+    Matches a list of ingredient names against Frida all at once.
+    """
+    results = [match_ingredient(ing, frida_df) for ing in ingredients]
+    return pd.DataFrame(results)
 
 
-# Test the code with some example ingredients from the REH menu
-if __name__ == "main":
-    # Ask the user for the path to the Frida file instead of hardcoding it
-    filepath = input("Enter the path to the Frida Excel file: ")
+if __name__ == "__main__":
+    from pathlib import Path
 
-    # Load the Frida database
+    project_root = Path(__file__).resolve().parents[1]
+    filepath = str(project_root / "sample_data" / "Frida_5.5_Dataset.xlsx")
+
+    print(f"Loading Frida from: {filepath}\n")
     frida_df = load_frida(filepath)
+    print(f"Loaded {len(frida_df)} foods from Frida Data_Table\n")
 
-    # Print how many foods were loaded
-    number_of_foods = len(frida_df)
-    print("Loaded " + str(number_of_foods) + " foods from Frida database")
-
-    # Some example ingredients from the dish_ingredients.json file
     ingredients = [
-        "oksekød",
-        "champignon",
-        "creme fraiche",
-        "torskefilet",
-        "kartoffel",
-        "løg",
+        "oksekød", "svinekød", "kylling", "torskefilet",
+        "champignon", "løg", "kartoffel", "mælk",
+        "æg", "fløde", "smør", "hvedemel", "sukker", "rasp",
     ]
 
+    print("Match results:")
+    print("-" * 65)
     results = match_all_ingredients(ingredients, frida_df)
+    for _, row in results.iterrows():
+        flag = " ⚠ LOW CONFIDENCE" if row["flagged_for_review"] else ""
+        print(f"  {row['query']:<20} → {row['matched_name']:<35} ({row['confidence']}%){flag}")
 
-    print("Match Results:")
-    print(results)
-
-    # Show which ingredients need to be checked manually
     flagged = results[results["flagged_for_review"] == True]
-
+    print()
     if len(flagged) > 0:
-        # Print how many ingredients need to be checked
-        number_of_flagged = len(flagged)
-        print("Warning: " + str(number_of_flagged) + " ingredient(s) need manual review:")
-        print(flagged[["query", "matched_name", "confidence"]])
+        print(f"⚠ {len(flagged)} ingredient(s) need manual review")
     else:
-        print("All ingredients matched successfully!")
+        print("✓ All ingredients matched with high confidence")
