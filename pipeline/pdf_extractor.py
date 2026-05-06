@@ -46,10 +46,11 @@ from typing import Dict, List
 try:
     from pipeline.menu_parser import parse_menu
     from pipeline.nutrient_lookup import nutrients_for_food, aggregate_nutrients
+    from pipeline.frida_matcher import load_frida, match_ingredient
 except ImportError:
     from menu_parser import parse_menu
     from nutrient_lookup import nutrients_for_food, aggregate_nutrients
-
+    from frida_matcher import load_frida, match_ingredient
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -63,6 +64,21 @@ DISH_INGREDIENTS_PATH = PROJECT_ROOT / "sample_data" / "dish_ingredients.json"
 # ---------------------------------------------------------------------------
 
 _DISH_DB = None
+
+# Cache for the Frida Food sheet (used by frida_matcher)
+_FRIDA_FOOD_DF = None
+
+
+def _get_frida_food_df():
+    """
+    Loads and caches the Frida Food sheet for use by frida_matcher.
+    Loaded once on first call, then reused for all subsequent ingredient lookups.
+    """
+    global _FRIDA_FOOD_DF
+    if _FRIDA_FOOD_DF is None:
+        frida_path = PROJECT_ROOT / "data" / "Frida_5.5_Dataset.xlsx"
+        _FRIDA_FOOD_DF = load_frida(str(frida_path))
+    return _FRIDA_FOOD_DF
 
 
 def _load_dish_db():
@@ -160,13 +176,24 @@ def _lookup_component(name: str, ingredients: list, amounts_g: list) -> dict:
         unmatched (list):   ingredients not found in Frida
         coverage_pct (int): percentage of ingredients matched
     """
+    frida_food_df = _get_frida_food_df()
     profiles = []
     matched = []
     unmatched = []
 
     for ingredient, amount in zip(ingredients, amounts_g):
+        # Step 1: translate raw Danish ingredient name to exact Frida food name
+        match_result = match_ingredient(ingredient, frida_food_df)
+        frida_name = match_result["matched_name"]
+
+        # Step 2: skip if frida_matcher flagged this as an uncertain match
+        if match_result["flagged_for_review"]:
+            unmatched.append(ingredient)
+            continue
+
+        # Step 3: look up nutrient values using the translated Frida name
         try:
-            profile = nutrients_for_food(ingredient, amount)
+            profile = nutrients_for_food(frida_name, amount)
             profiles.append(profile)
             matched.append({"ingredient": ingredient, "amount_g": amount})
         except KeyError:

@@ -14,8 +14,8 @@
 
   "meat": {
     "Bøf stroganoff": {
-      "ingredients": ["oksekød", "løg", "champignon", "paprika", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber"],
-      "amounts_g": [120, 60, 50, 2, 15, 100, 40, 10, 10, 1],
+      "ingredients": ["oksekød", "løg", "champignon", "peberfrugt", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber"],
+      "amounts_g": [120, 60, 50, 30, 15, 100, 40, 10, 10, 1],
       "kostform": "normalkost"
     },
     "Frikadeller": {
@@ -29,8 +29,8 @@
       "kostform": "normalkost"
     },
     "Flæskesteg": {
-      "ingredients": ["svinekød", "salt", "laurbærblad"],
-      "amounts_g": [180, 3, 1],
+      "ingredients": ["svinekød", "salt"],
+      "amounts_g": [180, 3],
       "kostform": "normalkost"
     },
     "Stegt kylling": {
@@ -39,7 +39,7 @@
       "kostform": "normalkost"
     },
     "Forloren hare": {
-      "ingredients": ["hakket kød", "løg", "æg", "rasp", "mælk"],
+      "ingredients": ["oksekød", "løg", "æg", "rasp", "mælk"],
       "amounts_g": [120, 40, 50, 20, 50],
       "kostform": "normalkost"
     },
@@ -62,7 +62,7 @@
       "kostform": "normalkost"
     },
     "Fiskelasagne": {
-      "ingredients": ["fisk", "lasagneplader", "fløde", "ost"],
+      "ingredients": ["torsk", "pasta", "fløde", "ost"],
       "amounts_g": [120, 80, 50, 30],
       "kostform": "normalkost"
     },
@@ -72,7 +72,7 @@
       "kostform": "normalkost"
     },
     "Fisk florentine": {
-      "ingredients": ["fisk", "spinat", "fløde", "ost"],
+      "ingredients": ["torsk", "spinat", "fløde", "ost"],
       "amounts_g": [120, 80, 50, 30],
       "kostform": "normalkost"
     }
@@ -138,8 +138,8 @@
       "kostform": "normalkost"
     },
     "Vanillebudding": {
-      "ingredients": ["mælk", "sukker", "vanilje"],
-      "amounts_g": [150, 30, 2],
+      "ingredients": ["mælk", "sukker"],
+      "amounts_g": [150, 30],
       "kostform": "normalkost"
     }
   }
