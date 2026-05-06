@@ -33,11 +33,11 @@ NUTRIENT_COLUMNS = {
 
 
 # --- INTERNAL DATASET CACHE ---
-_FRIDA_DF: pd.DataFrame | None = None
+_FRIDA_DF = None
 
 
 # --- DATASET LOADING ---
-def load_frida_dataset() -> pd.DataFrame:
+def load_frida_dataset():
     """
     Loads and normalizes the Frida 5.5 Data_Table.
 
@@ -50,8 +50,8 @@ def load_frida_dataset() -> pd.DataFrame:
     if _FRIDA_DF is not None:
         return _FRIDA_DF
 
-    project_root = Path(__file__).resolve().parents[3]
-    frida_path = project_root / "data" / "Frida_5.5_Dataset.xlsx"
+    project_root = Path(__file__).resolve().parents[1]
+    frida_path = project_root / "sample_data" / "Frida_5.5_Dataset.xlsx"
 
     if not frida_path.exists():
         raise FileNotFoundError(f"Frida dataset not found: {frida_path}")
@@ -61,7 +61,7 @@ def load_frida_dataset() -> pd.DataFrame:
         frida_path,
         sheet_name="Data_Table",
         header=3,     # nutrient ParameterIDs
-        index_col=1,  # food names
+        index_col=0,  # food names
         engine="openpyxl",
     )
 
