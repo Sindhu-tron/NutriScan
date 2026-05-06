@@ -1,4 +1,6 @@
 """
+pdf_extractor.py
+----------------
 Responsibility:
 - Parse a Madservice Roskilde menu PDF into structured meal dicts (via menu_parser)
 - Enrich each meal with ingredient data from dish_ingredients.json
@@ -60,10 +62,10 @@ DISH_INGREDIENTS_PATH = PROJECT_ROOT / "sample_data" / "dish_ingredients.json"
 # dish_ingredients.json loader (cached)
 # ---------------------------------------------------------------------------
 
-_DISH_DB: dict | None = None
+_DISH_DB = None
 
 
-def _load_dish_db() -> dict:
+def _load_dish_db():
     """
     Loads dish_ingredients.json and returns a flat dict:
         dish_name (str) -> {"ingredients": [...], "amounts_g": [...], "kostform": str}
@@ -100,7 +102,7 @@ def _load_dish_db() -> dict:
 # Dish matching
 # ---------------------------------------------------------------------------
 
-def _find_dish(dish_name: str, dish_db: dict) -> dict | None:
+def _find_dish(dish_name: str, dish_db):
     """
     Finds ingredient data for a dish name from dish_ingredients.json.
 
