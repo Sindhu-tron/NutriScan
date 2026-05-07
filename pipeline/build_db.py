@@ -11,33 +11,35 @@
 #   meal_scores         - the score and grade from scoring.py for every patient and dish
 #
 # Run this file directly to (re)build the database:
-#     python build_db.py
-
+#     python pipeline/build_db.py
+ 
 import json
 import sqlite3
 import sys
 from pathlib import Path
-
-import pandas as pd
-from rapidfuzz import process, fuzz
-
-
-# If the match score is below this number, we flag it so someone can check it manually
-THRESHOLD = 80
-
-
+ 
+ 
 # Paths to the input files and where the database should be saved
-PROJECT_ROOT = Path(__file__).resolve().parent
+# build_db.py lives inside pipeline/, so we go one level up to reach the project root
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRIDA_FILE = PROJECT_ROOT / "data" / "Frida_5.5_Dataset.xlsx"
-DISH_FILE = PROJECT_ROOT / "sample_data" / "dish_ingredients.json"
-DB_FILE = PROJECT_ROOT / "nutriscan.db"
-
-
-# Make sure we can import scoring.py from the pipeline folder
+DISH_FILE  = PROJECT_ROOT / "sample_data" / "dish_ingredients.json"
+DB_FILE    = PROJECT_ROOT / "pipeline" / "nutriscan.db"
+ 
+ 
+# Make sure we can import from the pipeline folder
 sys.path.insert(0, str(PROJECT_ROOT))
-from pipeline.scoring import score_meal
-
-
+from pipeline.scoring       import score_meal
+from pipeline.frida_matcher import load_frida, match_ingredient
+# We import load_frida and match_ingredient from pipeline/frida_matcher.py rather
+# than copying the logic here. That way the database always uses the same matching
+# strategy as the rest of the system, including the manual overrides for ingredients
+# like "aeg", "loeg", "oksekoed" etc. that WRatio consistently got wrong.
+ 
+# Real nutrient lookup — uses the Frida Data_Table instead of synthetic baselines
+from pipeline.nutrient_lookup import load_frida_dataset, nutrients_for_food, aggregate_nutrients
+ 
+ 
 # The fake patients used by the dashboard, copied over so the database is self-contained.
 # Each patient has an id, basic demographics, and a list of health conditions.
 # Conditions are split into primary (active), risk (at risk), and inactive.
@@ -51,20 +53,20 @@ PATIENTS = [
         "avatar": "EA",
         "conditions": {
             "primary": ["Hypertension", "Type 2 Diabetes"],
-            "risk": ["Malnutrition"],
+            "risk": ["Malnutrition Risk"],
             "inactive": []
         }
     },
     {
         "id": "XY-3891",
-        "name": "Birthe Sørensen",
+        "name": "Birthe Sorensen",
         "sex": "Female",
         "age": 79,
         "location": "Wing B, Room 7",
         "avatar": "BS",
         "conditions": {
             "primary": ["Osteoporosis"],
-            "risk": ["Malnutrition"],
+            "risk": ["Malnutrition Risk"],
             "inactive": ["Dementia"]
         }
     },
@@ -108,10 +110,10 @@ PATIENTS = [
         }
     }
 ]
-
-
-# When a patient has a condition we don't have rules for, we drop it before scoring.
-# "Malnutrition" is treated the same as "Malnutrition Risk" in scoring.py.
+ 
+ 
+# Only pass conditions that scoring.py has multipliers for.
+# Anything else (e.g. Dementia) is dropped before scoring.
 KNOWN_CONDITIONS = {
     "Hypertension",
     "Type 2 Diabetes",
@@ -119,180 +121,109 @@ KNOWN_CONDITIONS = {
     "Malnutrition Risk",
     "High Cholesterol",
 }
-
-
-# Average nutrient values per category, used as a baseline for each dish.
-# Numbers are based on typical Danish institution meals (Institutionskost 2025).
-CATEGORY_BASELINE = {
-    "meat": {
-        "energy_kcal": 720, "protein_g": 38, "fiber_g": 4,
-        "calcium_mg": 180, "sodium_mg": 780, "fat_sat_g": 8.5, "sugar_g": 4
-    },
-    "fish": {
-        "energy_kcal": 560, "protein_g": 34, "fiber_g": 4,
-        "calcium_mg": 200, "sodium_mg": 520, "fat_sat_g": 4.5, "sugar_g": 3
-    },
-    "vegetarian": {
-        "energy_kcal": 600, "protein_g": 22, "fiber_g": 8,
-        "calcium_mg": 240, "sodium_mg": 460, "fat_sat_g": 5.0, "sugar_g": 6
-    },
-    "desserts": {
-        "energy_kcal": 380, "protein_g": 6, "fiber_g": 2,
-        "calcium_mg": 120, "sodium_mg": 160, "fat_sat_g": 7.0, "sugar_g": 22
-    }
-}
-
-
-# Load the food names and IDs from the Frida Excel file
-def load_frida(filepath):
-    # Read the "Food" sheet from the Excel file
-    df = pd.read_excel(filepath, sheet_name="Food")
-
-    # Only keep the columns we need
-    df = df[["FødevareNavn", "FoodID"]]
-
-    # Remove rows where the food name is missing
-    df = df.dropna()
-
-    return df
-
-
-# This function takes one ingredient name and finds the best match in Frida
-def match_ingredient(ingredient, frida_df):
-    # Get all the Danish food names as a list
-    food_names = frida_df["FødevareNavn"].tolist()
-
-    # Use rapidfuzz to find the best match
-    best_match, score, index = process.extractOne(ingredient, food_names, scorer=fuzz.WRatio)
-
-    # Get the ID of the matched food
-    frida_id = frida_df.iloc[index]["FoodID"]
-
-    # Round the score to 1 decimal place so it is easier to read
-    score = round(score, 1)
-
-    # If the score is too low, flag it for manual review
-    if score < THRESHOLD:
-        flagged = True
-    else:
-        flagged = False
-
-    # Put the results in a dictionary and return it
-    result = {
-        "query": ingredient,
-        "matched_name": best_match,
-        "frida_id": frida_id,
-        "confidence": score,
-        "flagged_for_review": flagged
-    }
-
-    return result
-
-
+ 
+ 
 # Load the dishes from dish_ingredients.json and flatten them into simple lists
 def load_dishes(filepath):
-    # Read the JSON file
     raw = json.loads(Path(filepath).read_text(encoding="utf-8"))
-
-    # Lists we will fill in
-    dishes = []
-    dish_ings = []
+ 
+    dishes = []             # (dish_name, category, kostform)
+    dish_ings = []          # (dish_name, ingredient, grams) for dish_ingredients table
     unique_ingredients = set()
-
-    # Loop through each category (meat, fish, vegetarian, desserts)
+ 
+    # dish_data maps dish_name -> (ingredients list, amounts list) so
+    # score_all_meals can pass the real ingredients to nutrients_for_dish
+    dish_data = {}
+ 
     for category, bucket in raw.items():
-
-        # Skip the metadata block at the top of the JSON
         if category.startswith("_"):
             continue
-
-        # Loop through each dish in the category
+ 
         for dish_name, info in bucket.items():
             ingredients = info.get("ingredients", [])
-            amounts = info.get("amounts_g", [])
-            kostform = info.get("kostform", "")
-
+            amounts     = info.get("amounts_g", [])
+            kostform    = info.get("kostform", "")
+ 
             dishes.append((dish_name, category, kostform))
-
-            # Pair each ingredient with its amount in grams
+            dish_data[dish_name] = (ingredients, amounts)
+ 
             for ingredient, grams in zip(ingredients, amounts):
                 dish_ings.append((dish_name, ingredient, float(grams)))
                 unique_ingredients.add(ingredient)
-
-    return dishes, dish_ings, unique_ingredients
-
-
-# Build a synthetic nutrient profile for a single dish
-def nutrients_for_dish(dish_name, category):
-    # Start from the category baseline so meat, fish and dessert look different
-    nutrients = CATEGORY_BASELINE.get(category, CATEGORY_BASELINE["meat"]).copy()
-
-    # Add a small dish-specific variation so dishes in the same category aren't identical
-    name_hash = sum(ord(c) for c in dish_name)
-    nutrients["sodium_mg"] = nutrients["sodium_mg"] + (name_hash % 7) * 25
-    nutrients["sugar_g"] = nutrients["sugar_g"] + (name_hash % 5)
-    nutrients["fiber_g"] = nutrients["fiber_g"] + (name_hash % 3)
-
-    return nutrients
-
-
+ 
+    return dishes, dish_ings, unique_ingredients, dish_data
+ 
+ 
+# Look up real nutrient values for a dish by summing up each ingredient.
+# Uses pipeline/frida_matcher.py to translate ingredient names to Frida entries,
+# then pipeline/nutrient_lookup.py to get the actual numbers per 100g.
+# Ingredients flagged as uncertain by the matcher are skipped.
+def nutrients_for_dish(dish_ingredients, dish_amounts, frida_food_df):
+    profiles = []
+ 
+    for ingredient, grams in zip(dish_ingredients, dish_amounts):
+        match_result = match_ingredient(ingredient, frida_food_df)
+ 
+        if match_result["flagged_for_review"]:
+            continue
+ 
+        frida_name = match_result["matched_name"]
+        try:
+            profile = nutrients_for_food(frida_name, grams)
+            profiles.append(profile)
+        except KeyError:
+            # Frida name exists in Food sheet but not in Data_Table -- skip
+            pass
+ 
+    return aggregate_nutrients(profiles) if profiles else {
+        "energy_kcal": 0.0, "protein_g": 0.0, "fat_sat_g": 0.0,
+        "fiber_g": 0.0, "sugar_g": 0.0, "sodium_mg": 0.0,
+        "potassium_mg": 0.0, "calcium_mg": 0.0,
+    }
+ 
+ 
 # Take a patient's conditions and keep only the ones scoring.py knows about
 def conditions_for_scoring(patient):
-    primary = patient["conditions"]["primary"]
-    risk = patient["conditions"]["risk"]
-
-    # We treat both primary and risk conditions as active when scoring
-    active = list(primary) + list(risk)
-
-    # scoring.py uses "Malnutrition Risk", but the patient data uses "Malnutrition"
-    cleaned = []
-    for condition in active:
-        if condition == "Malnutrition":
-            cleaned.append("Malnutrition Risk")
-        else:
-            cleaned.append(condition)
-
-    # Drop any conditions that scoring.py doesn't have rules for
-    return [c for c in cleaned if c in KNOWN_CONDITIONS]
-
-
+    active = list(patient["conditions"]["primary"]) + list(patient["conditions"]["risk"])
+    return [c for c in active if c in KNOWN_CONDITIONS]
+ 
+ 
 # Score every patient against every dish and return rows for the meal_scores table
-def score_all_meals(dishes, patients):
+def score_all_meals(dishes, dish_data, patients, frida_food_df):
     rows = []
-
+ 
     for patient in patients:
         conditions = conditions_for_scoring(patient)
-
+ 
         for dish_name, category, kostform in dishes:
-            nutrients = nutrients_for_dish(dish_name, category)
-            result = score_meal(nutrients, conditions)
-
+            ingredients, amounts = dish_data.get(dish_name, ([], []))
+            nutrients = nutrients_for_dish(ingredients, amounts, frida_food_df)
+            result    = score_meal(nutrients, conditions)
+ 
             rows.append({
-                "patient_id": patient["id"],
-                "dish_name": dish_name,
-                "category": category,
-                "conditions": ", ".join(conditions),
-                "score": result["score"],
-                "grade": result["grade"],
+                "patient_id":        patient["id"],
+                "dish_name":         dish_name,
+                "category":          category,
+                "conditions":        ", ".join(conditions),
+                "score":             result["score"],
+                "grade":             result["grade"],
                 "grade_description": result["grade_description"],
-                "flag_count": len(result["flags"]),
-                "energy_kcal": nutrients["energy_kcal"],
-                "protein_g": nutrients["protein_g"],
-                "fiber_g": nutrients["fiber_g"],
-                "calcium_mg": nutrients["calcium_mg"],
-                "sodium_mg": nutrients["sodium_mg"],
-                "fat_sat_g": nutrients["fat_sat_g"],
-                "sugar_g": nutrients["sugar_g"],
+                "flag_count":        len(result["flags"]),
+                "energy_kcal":       nutrients["energy_kcal"],
+                "protein_g":         nutrients["protein_g"],
+                "fiber_g":           nutrients["fiber_g"],
+                "calcium_mg":        nutrients["calcium_mg"],
+                "sodium_mg":         nutrients["sodium_mg"],
+                "fat_sat_g":         nutrients["fat_sat_g"],
+                "sugar_g":           nutrients["sugar_g"],
             })
-
+ 
     return rows
-
-
+ 
+ 
 # Create the empty tables in the SQLite database
 def create_tables(connection):
     cursor = connection.cursor()
-
-    # Each CREATE TABLE statement defines one table in the database
     cursor.executescript("""
         CREATE TABLE patients (
             id          TEXT PRIMARY KEY,
@@ -302,7 +233,7 @@ def create_tables(connection):
             location    TEXT,
             avatar      TEXT
         );
-
+ 
         CREATE TABLE patient_conditions (
             patient_id  TEXT NOT NULL,
             condition   TEXT NOT NULL,
@@ -310,13 +241,13 @@ def create_tables(connection):
             PRIMARY KEY (patient_id, condition, status),
             FOREIGN KEY (patient_id) REFERENCES patients(id)
         );
-
+ 
         CREATE TABLE dishes (
             name        TEXT PRIMARY KEY,
             category    TEXT,
             kostform    TEXT
         );
-
+ 
         CREATE TABLE dish_ingredients (
             dish_name   TEXT NOT NULL,
             ingredient  TEXT NOT NULL,
@@ -324,7 +255,7 @@ def create_tables(connection):
             PRIMARY KEY (dish_name, ingredient),
             FOREIGN KEY (dish_name) REFERENCES dishes(name)
         );
-
+ 
         CREATE TABLE ingredient_matches (
             query               TEXT PRIMARY KEY,
             matched_name        TEXT,
@@ -332,7 +263,7 @@ def create_tables(connection):
             confidence          REAL,
             flagged_for_review  INTEGER
         );
-
+ 
         CREATE TABLE meal_scores (
             patient_id          TEXT NOT NULL,
             dish_name           TEXT NOT NULL,
@@ -354,51 +285,46 @@ def create_tables(connection):
             FOREIGN KEY (dish_name)  REFERENCES dishes(name)
         );
     """)
-
-
+ 
+ 
 # Insert all the patients and their conditions
 def insert_patients(connection, patients):
     cursor = connection.cursor()
-
     for patient in patients:
         cursor.execute(
             "INSERT INTO patients VALUES (?, ?, ?, ?, ?, ?)",
             (patient["id"], patient["name"], patient["sex"],
              patient["age"], patient["location"], patient["avatar"])
         )
-
-        # Insert one row per condition with its status
         for status in ("primary", "risk", "inactive"):
             for condition in patient["conditions"][status]:
                 cursor.execute(
                     "INSERT INTO patient_conditions VALUES (?, ?, ?)",
                     (patient["id"], condition, status)
                 )
-
-
+ 
+ 
 # Insert dishes and their ingredients
 def insert_dishes(connection, dishes, dish_ings):
     cursor = connection.cursor()
     cursor.executemany("INSERT INTO dishes VALUES (?, ?, ?)", dishes)
     cursor.executemany("INSERT INTO dish_ingredients VALUES (?, ?, ?)", dish_ings)
-
-
+ 
+ 
 # Insert the Frida matcher results
 def insert_matches(connection, matches):
     cursor = connection.cursor()
-
     for match in matches.values():
         cursor.execute(
             "INSERT INTO ingredient_matches VALUES (?, ?, ?, ?, ?)",
             (match["query"], match["matched_name"], match["frida_id"],
              match["confidence"], int(match["flagged_for_review"]))
         )
-
-
+ 
+ 
 # Insert the meal scores
 def insert_meal_scores(connection, rows):
     cursor = connection.cursor()
-
     for row in rows:
         cursor.execute(
             """INSERT INTO meal_scores VALUES
@@ -408,42 +334,46 @@ def insert_meal_scores(connection, rows):
              row["energy_kcal"], row["protein_g"], row["fiber_g"], row["calcium_mg"],
              row["sodium_mg"], row["fat_sat_g"], row["sugar_g"])
         )
-
-
+ 
+ 
 # Main: run the whole build pipeline
 if __name__ == "__main__":
-    # Step 1: load the Frida database
-    print("Loading Frida database...")
-    frida_df = load_frida(FRIDA_FILE)
-    print("Loaded " + str(len(frida_df)) + " foods from Frida")
-
-    # Step 2: load all dishes and their ingredients
+    # Step 1: load the Frida Food sheet (used by frida_matcher for name matching)
+    print("Loading Frida Food sheet...")
+    frida_food_df = load_frida(str(FRIDA_FILE))
+    print("Loaded " + str(len(frida_food_df)) + " foods from Frida")
+ 
+    # Step 2: load the Frida Data_Table into the nutrient_lookup cache so it's
+    # ready for nutrients_for_food() calls inside nutrients_for_dish()
+    print("Loading Frida Data_Table for nutrient lookup...")
+    load_frida_dataset()
+    print("Data_Table loaded")
+ 
+    # Step 3: load all dishes and their ingredients from dish_ingredients.json
     print("Loading dishes...")
-    dishes, dish_ings, unique_ingredients = load_dishes(DISH_FILE)
+    dishes, dish_ings, unique_ingredients, dish_data = load_dishes(DISH_FILE)
     print("Loaded " + str(len(dishes)) + " dishes with " + str(len(unique_ingredients)) + " unique ingredients")
-
-    # Step 3: match every unique ingredient against Frida
+ 
+    # Step 4: match every unique ingredient against Frida using the fixed matcher
+    # (includes manual overrides for ingredients like aeg, loeg, oksekoed etc.)
     print("Matching ingredients to Frida...")
     matches = {}
     for ingredient in sorted(unique_ingredients):
-        matches[ingredient] = match_ingredient(ingredient, frida_df)
-
-    flagged_count = 0
-    for match in matches.values():
-        if match["flagged_for_review"]:
-            flagged_count = flagged_count + 1
+        matches[ingredient] = match_ingredient(ingredient, frida_food_df)
+ 
+    flagged_count = sum(1 for m in matches.values() if m["flagged_for_review"])
     print("Matched " + str(len(matches)) + " ingredients (" + str(flagged_count) + " flagged for review)")
-
-    # Step 4: score every meal for every patient
+ 
+    # Step 5: score every patient against every dish using real Frida nutrients
     print("Scoring meals for each patient...")
-    meal_score_rows = score_all_meals(dishes, PATIENTS)
+    meal_score_rows = score_all_meals(dishes, dish_data, PATIENTS, frida_food_df)
     print("Computed " + str(len(meal_score_rows)) + " patient-meal scores")
-
-    # Step 5: build the SQLite database
+ 
+    # Step 6: write the SQLite database
     print("Writing database to " + str(DB_FILE) + " ...")
     if DB_FILE.exists():
         DB_FILE.unlink()
-
+ 
     connection = sqlite3.connect(DB_FILE)
     create_tables(connection)
     insert_patients(connection, PATIENTS)
@@ -452,5 +382,5 @@ if __name__ == "__main__":
     insert_meal_scores(connection, meal_score_rows)
     connection.commit()
     connection.close()
-
-    print("Done. Database is ready.")
+ 
+    print("Done. Database is ready at " + str(DB_FILE))
