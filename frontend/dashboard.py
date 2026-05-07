@@ -2,6 +2,7 @@
 # The pipeline modules don't know anything about the frontend, they just take inputs and return outputs. The dashboard is what stings them together for the user. 
 # It is built with Dash -  a Python library that lets us build web interfaces. It runs a local web server and we interact with it through the browser.
 # Run this file directly to start the dashboard: python frontend/dashboard.py 
+# Run this to start the API in a split terminal: uvicorn api.main:app --reload
 # Then open your browser at: http://127.0.0.1:8050
 # dependencies needed (pip install dash dash-bootstrap-components)
 
@@ -15,21 +16,93 @@ How this file is structured:
     6. Callbacks - the functions that make the dashboard interactive
 """
 
+import sys
+from pathlib import Path
 
-# Date: 30.03.2026
-# Author: Sindhuja Dantuluri
+# Make sure the project root is on the path so pipeline imports work
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import requests
 import dash 
 from dash import html, dcc, Input, Output, State, ctx
 import dash_bootstrap_components as dbc 
 
-# Synthetic patient data
-# Used for testing the dashboard before the pipeline is connected. 
-# This will later be replaced by real data from the scoring module. 
-# # Each patient has an id, basic demographics, and a list of health conditions.
-# Conditions are split into primary (active), risk (at risk), and inactive.
 
-PATIENTS = [
+# ----------------
+# API Connection 
+# Tries to fetch live data from the FastAPI backend (port 8000).
+# Falls back to hardcoded data if the API is not running, so the dashboard
+# still works during development or if something goes wrong on demo day.
+# ----------------
+
+API_URL = "http://127.0.0.1:8000"
+ 
+ 
+def api_get_patients():
+    """Fetches patients from GET /patients. Returns None if unreachable."""
+    try:
+        r = requests.get(f"{API_URL}/patients", timeout=2)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
+ 
+ 
+def api_score_meal(pdf_path, day_number, conditions, patient_id=None):
+    """Calls POST /score/meal. Returns None if unreachable."""
+    try:
+        r = requests.post(
+            f"{API_URL}/score/meal",
+            json={"pdf_path": pdf_path, "day_number": day_number,
+                  "conditions": conditions, "patient_id": patient_id},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
+ 
+ 
+def api_score_week(pdf_path, conditions, patient_id=None):
+    """Calls POST /score/week. Returns None if unreachable."""
+    try:
+        r = requests.post(
+            f"{API_URL}/score/week",
+            json={"pdf_path": pdf_path, "conditions": conditions, "patient_id": patient_id},
+            timeout=30,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
+ 
+ 
+def api_patient_history(patient_id):
+    """Calls GET /patients/{id}/history. Returns empty list if unreachable."""
+    try:
+        r = requests.get(f"{API_URL}/patients/{patient_id}/history", timeout=2)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return []
+ 
+ 
+def api_check_health():
+    """Returns True if the API is running, False otherwise."""
+    try:
+        r = requests.get(f"{API_URL}/health", timeout=1)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+# -------------------
+# Section 1: DATA 
+# Hardcoded fallback list - used when the API is not working
+# Each patient has an id, basic demographics, and a list of health conditions.
+# Conditions are split into primary (active), risk (at risk), and inactive.
+# -------------------
+
+_PATIENTS_FALLBACK = [
     {
         "id": "XY-5217",
         "name": "Erik Andersen",
@@ -39,7 +112,7 @@ PATIENTS = [
         "avatar": "EA",
         "conditions": {
             "primary": ["Hypertension", "Type 2 Diabetes"],
-            "risk": ["Malnutrition"],
+            "risk": ["Malnutrition Risk"],
             "inactive": []
         }
     },
@@ -52,7 +125,7 @@ PATIENTS = [
         "avatar": "BS",
         "conditions": {
             "primary": ["Osteoporosis"],
-            "risk": ["Malnutrition"],
+            "risk": ["Malnutrition Risk"],
             "inactive": ["Dementia"]
         }
     },
@@ -96,6 +169,10 @@ PATIENTS = [
         }
     }
 ]
+
+# Try to load live patients from the API on startup; use fallback if it's down.
+_live_patients = api_get_patients()
+PATIENTS = _live_patients if _live_patients is not None else _PATIENTS_FALLBACK
  
 # Sample meals for the demo.
 # In the real system, these come from menu_parser.py reading the Roskilde PDF menus.
@@ -165,14 +242,15 @@ SAMPLE_MEALS = {
  
 # Nutrient values per meal.
 # These are simplified placeholder values for the demo.
-# In the real system, these come from nutrient_lookup.py using the Frida database.
-# Values are per meal (not per 100g).
+# The real pipeline gives much more accurate numbers
+# (see pdf_extractor.py + nutrient_lookup.py), but these work fine for the demo.
+# Sodium is stored in grams here — calculate_grade() converts to mg before scoring.
 MEAL_NUTRIENTS = {
-    "March 2026 - Day 1":  {"energy": 680, "protein": 38, "carbs": 52, "fibre": 4, "calcium": 180, "sodium": 6.1},
-    "March 2026 - Day 2":  {"energy": 620, "protein": 42, "carbs": 48, "fibre": 6, "calcium": 210, "sodium": 4.8},
-    "March 2026 - Day 5":  {"energy": 520, "protein": 35, "carbs": 40, "fibre": 5, "calcium": 190, "sodium": 3.9},
-    "March 2026 - Day 10": {"energy": 590, "protein": 36, "carbs": 45, "fibre": 3, "calcium": 160, "sodium": 5.5},
-    "April 2026 - Day 14": {"energy": 610, "protein": 40, "carbs": 50, "fibre": 7, "calcium": 220, "sodium": 4.2},
+    "March 2026 - Day 1":  {"energy": 680, "protein": 38, "carbs": 52, "fibre": 4,  "calcium": 180, "sodium": 0.55},
+    "March 2026 - Day 2":  {"energy": 620, "protein": 42, "carbs": 48, "fibre": 6,  "calcium": 210, "sodium": 0.45},
+    "March 2026 - Day 5":  {"energy": 520, "protein": 35, "carbs": 40, "fibre": 5,  "calcium": 190, "sodium": 0.38},
+    "March 2026 - Day 10": {"energy": 590, "protein": 36, "carbs": 45, "fibre": 3,  "calcium": 160, "sodium": 0.52},
+    "April 2026 - Day 14": {"energy": 610, "protein": 40, "carbs": 50, "fibre": 7,  "calcium": 220, "sodium": 0.42},
 }
  
 # Condition profiles shown on the Disease Profiles page.
@@ -209,7 +287,7 @@ CONDITION_PROFILES = [
         "name": "Malnutrition Risk",
         "description": "Risk of undernutrition — common in elderly with low appetite",
         "multipliers": [
-            ("Energy", "0.3x penalty (reduced)", "#4caf7d"),
+            ("Energy", "0.5x reward (reduced penalty)", "#4caf7d"),
             ("Protein", "2.0x reward", "#4caf7d")
         ]
     },
@@ -248,84 +326,46 @@ DATA_SOURCES = [
 # Grade colours used throughout the dashboard.
 # Green = good, orange = adequate, red = poor/critical.
 GRADE_COLORS = {
-    "A": "#4caf7d",
-    "B": "#8bc34a",
-    "C": "#e8a838",
-    "D": "#ff7043",
-    "E": "#d94f3d"
+    "A": "#2d7d46",   # forest green
+    "B": "#5a9e3a",   # olive green
+    "C": "#c8841a",   # amber
+    "D": "#c0532a",   # terracotta
+    "E": "#a82020",   # deep red
 }
  
  
 # =============================================================================
 # SECTION 2: SCORING FUNCTION
-# This is a simplified version of the full scoring algorithm in scoring.py.
-# It takes nutrient values and a patient's conditions, and returns a grade A-E.
-# The full algorithm with all nutrients and thresholds is in pipeline/scoring.py.
+# Calls pipeline/scoring.py directly.
 # =============================================================================
  
 def calculate_grade(nutrients, conditions):
     """
-    Calculates a nutritional grade (A-E) for a meal based on its nutrient
-    values and the patient's health conditions.
+    Wraps pipeline/scoring.py so the dashboard always produces the same
+    grades as the rest of the system.
  
-    Parameters:
-        nutrients (dict): nutrient values for the meal
-        conditions (list): list of condition names for the patient
- 
-    Returns:
-        grade (str): letter grade A to E
-        description (str): short description of the grade
+    The dashboard stores sodium in grams (to match the g display unit),
+    but scoring.py works in mg — we convert here at the boundary.
     """
-    score = 0
+    try:
+        from pipeline.scoring import score_meal
+    except ImportError:
+        from scoring import score_meal
+
+    # Dashboard MEAL_NUTRIENTS uses sodium in grams — convert to mg for scoring.py
+    nutrients_for_scoring = {
+        "energy_kcal":  nutrients.get("energy",  0),
+        "protein_g":    nutrients.get("protein", 0),
+        "fiber_g":      nutrients.get("fibre",   0),
+        "calcium_mg":   nutrients.get("calcium", 0),
+        "sodium_mg":    nutrients.get("sodium",  0) * 1000,   # g → mg
+        "fat_sat_g":    nutrients.get("fat_sat", 0),
+        "sugar_g":      nutrients.get("carbs",   0) * 0.3,    # rough: ~30% of carbs as sugar
+        "potassium_mg": nutrients.get("potassium", 0)
+    }
  
-    # --- PENALTIES (bad nutrients add to the score) ---
- 
-    # Sodium is the most important nutrient to monitor for elderly patients.
-    # If the patient has hypertension, the penalty is doubled.
-    sodium_multiplier = 2.0 if "Hypertension" in conditions else 1.0
-    if nutrients["sodium"] > 5.0:
-        score = score + (nutrients["sodium"] - 5.0) * 2 * sodium_multiplier
- 
-    # High carbohydrates are a concern for diabetes patients.
-    sugar_multiplier = 1.5 if "Type 2 Diabetes" in conditions else 1.0
-    if nutrients["carbs"] > 55:
-        score = score + (nutrients["carbs"] - 55) * 0.1 * sugar_multiplier
- 
-    # --- REWARDS (good nutrients reduce the score) ---
- 
-    # Protein is especially important for patients at risk of malnutrition.
-    protein_multiplier = 2.0 if "Malnutrition Risk" in conditions else 1.0
-    if nutrients["protein"] >= 25:
-        score = score - (3 * protein_multiplier)
-    elif nutrients["protein"] >= 20:
-        score = score - (1.5 * protein_multiplier)
- 
-    # Calcium is especially important for osteoporosis patients.
-    calcium_multiplier = 2.0 if "Osteoporosis" in conditions else 1.0
-    if nutrients["calcium"] >= 250:
-        score = score - (2 * calcium_multiplier)
-    elif nutrients["calcium"] >= 180:
-        score = score - (1 * calcium_multiplier)
- 
-    # Fibre is beneficial for most patients.
-    fibre_multiplier = 1.5 if "High Cholesterol" in conditions else 1.0
-    if nutrients["fibre"] >= 6:
-        score = score - (2 * fibre_multiplier)
-    elif nutrients["fibre"] >= 4:
-        score = score - (1 * fibre_multiplier)
- 
-    # Map the final score to a letter grade.
-    # Lower score = better grade. E requires multiple nutrients to be failing.
-    if score <= -2:
-        return "A", "Excellent nutritional balance"
-    elif score <= 2:
-        return "B", "Good - minor improvements possible"
-    elif score <= 6:
-        return "C", "Adequate - improvements recommended"
-    elif score <= 11:
-        return "D", "Poor - action recommended"
-    else:
-        return "E", "Critical - immediate review needed"
+    result = score_meal(nutrients_for_scoring, conditions)
+    return result["grade"], result["grade_description"]
  
  
 # =============================================================================
@@ -334,11 +374,22 @@ def calculate_grade(nutrients, conditions):
 # the look consistent without repeating the same CSS everywhere.
 # =============================================================================
  
-# Style for the left sidebar
+# Palette as constants so it's easy to tweak in one place
+C_SIDEBAR   = "#2c3e50"    # dark slate
+C_ACCENT    = "#c8841a"    # warm amber
+C_BG        = "#f5f2ed"    # warm off-white
+C_CARD      = "#ffffff"
+C_TEXT      = "#2c2c2c"
+C_MUTED     = "#7a7a7a"
+C_BORDER    = "#e0dbd3"
+C_GREEN     = "#2d7d46"
+C_RED       = "#a82020"
+C_ORANGE    = "#c8841a"
+ 
 SIDEBAR_STYLE = {
-    "width": "240px",
+    "width": "230px",
     "minHeight": "100vh",
-    "backgroundColor": "#1a1a2e",
+    "backgroundColor": C_SIDEBAR,
     "position": "fixed",
     "top": "0",
     "left": "0",
@@ -346,471 +397,444 @@ SIDEBAR_STYLE = {
     "zIndex": "100"
 }
  
-# Style for the main content area (offset to the right of the sidebar)
 CONTENT_STYLE = {
-    "marginLeft": "240px",
-    "padding": "24px",
-    "backgroundColor": "#f4f4f4",
+    "marginLeft": "230px",
+    "padding": "28px 32px",
+    "backgroundColor": C_BG,
     "minHeight": "100vh"
 }
  
-# Style for individual cards (white boxes with rounded corners)
 CARD_STYLE = {
-    "backgroundColor": "white",
-    "borderRadius": "12px",
-    "padding": "20px",
-    "boxShadow": "0 1px 4px rgba(0,0,0,0.08)",
-    "marginBottom": "16px"
+    "backgroundColor": C_CARD,
+    "borderRadius": "10px",
+    "padding": "20px 24px",
+    "boxShadow": "0 1px 3px rgba(0,0,0,0.07)",
+    "marginBottom": "16px",
+    "border": f"1px solid {C_BORDER}"
 }
  
- 
 # =============================================================================
-# SECTION 4: HELPER FUNCTIONS
+# SECTION 4: UI Components
 # Each function builds one reusable UI component.
 # =============================================================================
  
 def make_sidebar():
-    """
-    Builds the left navigation sidebar.
-    Each nav item has an id like "nav-dashboard" so the callback
-    can detect which one was clicked.
-    """
-    # Navigation structure: section heading -> list of (page_id, label) pairs
+    """Left navigation bar. Each item has an id like 'nav-dashboard' so the
+    navigate callback can pick up which one was clicked."""
+ 
     nav_sections = [
         ("OVERVIEW", [
-            ("dashboard", "🏠 Dashboard"),
-            ("patients", "👥 Patients"),
-            ("meal-plans", "🍽️ Meal plans"),
+            ("dashboard",        "🏠  Dashboard"),
+            ("patients",         "👥  Patients"),
+            ("meal-plans",       "🍽️  Meal plans"),
         ]),
         ("ANALYSIS", [
-            ("nutritional-gaps", "📊 Nutritional gaps"),
-            ("frida-foods", "🥗 Frida Foods"),
-            ("disease-profiles", "🏥 Disease Profiles"),
+            ("nutritional-gaps", "📊  Nutritional gaps"),
+            ("frida-foods",      "🥗  Frida foods"),
+            ("disease-profiles", "🏥  Disease profiles"),
         ]),
         ("DATA", [
-            ("data-sources", "📁 Data sources"),
-            ("settings", "⚙️ Settings"),
-        ])
+            ("data-sources",     "📁  Data sources"),
+            ("settings",         "⚙️  Settings"),
+        ]),
     ]
  
-    # Build the list of nav items to display in the sidebar
     nav_items = []
     for section_title, links in nav_sections:
-        # Add the section heading
         nav_items.append(
             html.P(section_title, style={
-                "color": "#999",
-                "fontSize": "11px",
-                "fontWeight": "600",
-                "letterSpacing": "1px",
-                "marginTop": "20px",
-                "marginBottom": "8px",
-                "paddingLeft": "16px"
+                "color": "#8fa3b0",
+                "fontSize": "10px",
+                "fontWeight": "bold",
+                "letterSpacing": "1.5px",
+                "marginTop": "22px",
+                "marginBottom": "6px",
+                "paddingLeft": "18px"
             })
         )
-        # Add each link under the section
         for page_id, label in links:
             nav_items.append(
                 html.Div(label, id="nav-" + page_id, style={
-                    "padding": "10px 16px",
-                    "borderRadius": "8px",
+                    "padding": "9px 18px",
+                    "borderRadius": "6px",
                     "cursor": "pointer",
-                    "color": "#ccc",
-                    "marginBottom": "4px"
+                    "color": "#c8d6df",
+                    "fontSize": "13px",
+                    "marginBottom": "2px"
                 })
             )
  
     return html.Div([
-        # Logo area
+        # Logo
         html.Div([
             html.H2("NutriScan", style={
-                "color": "#e8a838",
+                "color": C_ACCENT,
                 "margin": "0",
-                "fontSize": "24px",
-                "fontWeight": "800"
+                "fontSize": "22px",
+                "fontWeight": "bold",
+                "letterSpacing": "0.5px"
             }),
-            html.P("Nutritional intelligence guide", style={
-                "color": "#aaa",
-                "fontSize": "11px",
-                "margin": "0"
+            html.P("Meal nutrition analysis · RUC 2026", style={
+                "color": "#8fa3b0",
+                "fontSize": "10px",
+                "margin": "4px 0 0 0"
             })
-        ], style={"padding": "24px 16px 16px"}),
+        ], style={"padding": "24px 18px 14px"}),
  
-        html.Hr(style={"borderColor": "#333", "margin": "0 16px"}),
+        html.Hr(style={"borderColor": "#3d5166", "margin": "0 18px"}),
  
-        # Navigation links
-        html.Div(nav_items, style={"padding": "8px"}),
+        html.Div(nav_items, style={"padding": "6px 8px"}),
  
-        # Footer disclaimer
+        # Small disclaimer at the bottom
         html.Div([
-            html.P("Synthetic patient data only.", style={
-                "fontSize": "10px", "color": "#666", "margin": "0"
+            # API status dot — green when running, grey when offline
+            html.Div([
+                html.Span("●", style={
+                    "color": "#2d7d46" if api_check_health() else "#666",
+                    "fontSize": "10px", "marginRight": "5px",
+                }),
+                html.Span(
+                    "API connected" if api_check_health() else "API offline",
+                    style={"fontSize": "10px", "color": "#5a7080"}
+                ),
+            ], style={"marginBottom": "5px"}),
+            html.P("⚠ Synthetic patient data.", style={
+                "fontSize": "10px", "color": "#5a7080", "margin": "0"
             }),
-            html.P("Please double-check all outputs.", style={
-                "fontSize": "10px", "color": "#666", "margin": "0"
+            html.P("Do not use for clinical decisions.", style={
+                "fontSize": "10px", "color": "#5a7080", "margin": "2px 0 0 0"
             })
-        ], style={"position": "absolute", "bottom": "16px", "padding": "0 16px"})
+        ], style={"position": "absolute", "bottom": "16px", "padding": "0 18px"})
  
     ], style=SIDEBAR_STYLE)
  
  
 def make_patient_card(patient):
-    """
-    Builds the patient profile card shown at the top of the dashboard.
-    Shows the patient's name, age, location, and primary conditions.
-    """
-    # Build a badge for each primary condition
-    condition_badges = []
+    """Profile banner at the top of the dashboard page."""
+    badges = []
     for condition in patient["conditions"]["primary"]:
-        condition_badges.append(
+        badges.append(
             html.Span(condition, style={
-                "backgroundColor": "#fff3e0",
-                "color": "#e8a838",
-                "border": "1px solid #e8a838",
+                "backgroundColor": "#fef5e7",
+                "color": C_ACCENT,
+                "border": f"1px solid {C_ACCENT}",
                 "borderRadius": "20px",
-                "padding": "4px 12px",
+                "padding": "3px 11px",
                 "fontSize": "12px",
-                "fontWeight": "600",
-                "marginRight": "8px"
+                "fontWeight": "bold",
+                "marginRight": "6px"
             })
         )
  
     return html.Div([
         html.Div([
-            # Avatar circle with patient initials
+            # Avatar
             html.Div(patient["avatar"], style={
-                "width": "50px",
-                "height": "50px",
+                "width": "48px",
+                "height": "48px",
                 "borderRadius": "50%",
-                "backgroundColor": "#e8a838",
+                "backgroundColor": C_ACCENT,
                 "color": "white",
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "center",
                 "fontWeight": "bold",
-                "fontSize": "16px",
+                "fontSize": "15px",
                 "marginRight": "16px",
                 "flexShrink": "0"
             }),
-            # Patient details
+            # Info
             html.Div([
-                html.H4("Patient #" + patient["id"], style={
-                    "margin": "0 0 4px 0", "fontSize": "16px"
+                html.H4(patient["name"], style={
+                    "margin": "0 0 3px 0",
+                    "fontSize": "16px",
+                    "color": C_TEXT
                 }),
-                html.P(patient["sex"] + " · Age " + str(patient["age"]), style={
-                    "margin": "0", "color": "#666", "fontSize": "13px"
-                }),
-                html.P(patient["location"], style={
-                    "margin": "0", "color": "#666", "fontSize": "13px"
-                })
+                html.P(
+                    f"#{patient['id']} · {patient['sex']} · Age {patient['age']} · {patient['location']}",
+                    style={"margin": "0", "color": C_MUTED, "fontSize": "12px"
+}
+                ),
             ]),
-            # Condition badges on the right side
-            html.Div(condition_badges, style={
+            # Condition badges flush right
+            html.Div(badges, style={
                 "marginLeft": "auto",
                 "display": "flex",
-                "alignItems": "center"
+                "alignItems": "center",
+                "flexWrap": "wrap",
+                "gap": "4px"
             })
         ], style={"display": "flex", "alignItems": "center"})
-    ], style={**CARD_STYLE, "marginBottom": "20px"})
+    ], style={**CARD_STYLE, "marginBottom": "20px",
+              "borderLeft": f"4px solid {C_ACCENT}"})
  
  
 def make_score_cards(nutrients, grade, grade_description):
-    """
-    Builds the three summary cards: energy intake, protein intake, and grade.
-    These sit side by side at the top of the dashboard.
-    """
-    # Calculate how close each value is to its target (as a percentage)
-    energy_pct = round(nutrients["energy"] / 700 * 100)
-    protein_pct = round(nutrients["protein"] / 25 * 100)
- 
-    # Choose the colour for the grade
+    """Three summary cards across the top: energy, protein, and grade."""
+    energy_pct  = round(nutrients["energy"]  / 700 * 100)
+    protein_pct = round(nutrients["protein"] / 25  * 100)
     grade_color = GRADE_COLORS.get(grade, "#888")
  
-    # Choose text colour based on whether the value is close to target
-    if energy_pct < 85:
-        energy_color = "#d94f3d"
-    else:
-        energy_color = "#4caf7d"
+    def pct_color(pct):
+        return C_GREEN if pct >= 85 else (C_ORANGE if pct >= 60 else C_RED)
  
-    if protein_pct < 85:
-        protein_color = "#d94f3d"
-    else:
-        protein_color = "#4caf7d"
+    stat_label_style = {
+        "fontSize": "10px", "fontWeight": "bold", "letterSpacing": "1px",
+        "color": C_MUTED, "margin": "0 0 8px 0"
+    }
+    stat_value_style = {
+        "margin": "0 0 4px 0", "fontSize": "26px", "fontWeight": "bold",
+        "color": C_TEXT
+    }
+    stat_sub_style = {
+        "fontSize": "11px", "color": C_MUTED, "margin": "0 0 6px 0"
+    }
  
     return html.Div([
  
-        # Energy card
+        # Energy
         html.Div([
-            html.P("ENERGY INTAKE", style={
-                "fontSize": "11px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 8px 0"
-            }),
-            html.H3(str(nutrients["energy"]) + " kcal", style={
-                "margin": "0 0 4px 0", "fontSize": "28px", "fontWeight": "800"
-            }),
-            html.P("Target: ~700 kcal/meal", style={
-                "fontSize": "12px", "color": "#888", "margin": "0 0 8px 0"
-            }),
-            html.P("▲ " + str(energy_pct) + "% of target", style={
-                "fontSize": "11px", "color": energy_color,
-                "margin": "0", "fontWeight": "600"
+            html.P("ENERGY INTAKE", style=stat_label_style),
+            html.H3(f"{int(nutrients['energy'])} kcal", style=stat_value_style),
+            html.P("Target: ~700 kcal / meal", style=stat_sub_style),
+            html.P(f"{energy_pct}% of target", style={
+                "fontSize": "12px", "color": pct_color(energy_pct),
+                "margin": "0", "fontWeight": "bold"
             })
         ], style={**CARD_STYLE, "flex": "1", "marginRight": "12px", "marginBottom": "0"}),
  
-        # Protein card
+        # Protein
         html.Div([
-            html.P("PROTEIN INTAKE", style={
-                "fontSize": "11px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 8px 0"
-            }),
-            html.H3(str(nutrients["protein"]) + " g", style={
-                "margin": "0 0 4px 0", "fontSize": "28px", "fontWeight": "800"
-            }),
-            html.P("Target: ~25g/meal (NNR 2023)", style={
-                "fontSize": "12px", "color": "#888", "margin": "0 0 8px 0"
-            }),
-            html.P("▲ " + str(protein_pct) + "% of target", style={
-                "fontSize": "11px", "color": protein_color,
-                "margin": "0", "fontWeight": "600"
+            html.P("PROTEIN INTAKE", style=stat_label_style),
+            html.H3(f"{nutrients['protein']} g", style=stat_value_style),
+            html.P("Target: ~25 g / meal  (NNR 2023)", style=stat_sub_style),
+            html.P(f"{protein_pct}% of target", style={
+                "fontSize": "12px", "color": pct_color(protein_pct),
+                "margin": "0", "fontWeight": "bold"
             })
         ], style={**CARD_STYLE, "flex": "1", "marginRight": "12px", "marginBottom": "0"}),
  
-        # Nutritional score / grade card
+        # Grade
         html.Div([
-            html.P("NUTRITIONAL SCORE", style={
-                "fontSize": "11px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 8px 0"
-            }),
+            html.P("NUTRITIONAL GRADE", style=stat_label_style),
             html.Div([
-                # Large letter grade
                 html.Span(grade, style={
-                    "fontSize": "72px",
-                    "fontWeight": "900",
+                    "fontSize": "64px",
+                    "fontWeight": "bold",
                     "color": grade_color,
                     "lineHeight": "1"
                 }),
-                # Grade description next to the letter
                 html.Div([
-                    html.P("Grade", style={
-                        "fontSize": "12px", "color": "#888", "margin": "0"
-                    }),
+                    html.P("Grade", style={"fontSize": "11px", "color": C_MUTED, "margin": "0"
+}),
                     html.P(grade_description, style={
                         "fontSize": "11px", "color": grade_color,
-                        "fontWeight": "600", "margin": "0"
+                        "fontWeight": "bold", "margin": "0"
                     })
-                ], style={"marginLeft": "16px"})
+                ], style={"marginLeft": "14px"})
             ], style={"display": "flex", "alignItems": "center"}),
-            html.P("A = Excellent  B = Good  C = Adequate  D = Poor  E = Critical",
-                   style={"fontSize": "10px", "color": "#bbb", "margin": "8px 0 0 0"})
-        ], style={**CARD_STYLE, "flex": "1", "marginBottom": "0"})
+            html.P("A = Excellent  ·  B = Good  ·  C = Adequate  ·  D = Poor  ·  E = Critical",
+                   style={"fontSize": "9px", "color": "#bbb",
+                          "margin": "10px 0 0 0"
+})
+        ], style={**CARD_STYLE, "flex": "1", "marginBottom": "0",
+                  "borderLeft": f"4px solid {grade_color}"})
  
     ], style={"display": "flex", "marginBottom": "16px"})
  
  
 def make_meal_card(meal):
-    """
-    Builds the Today's Menu card showing the main dish, sides, and dessert.
-    """
+    """Shows today's main dish, sides, and dessert."""
+    section_label = {
+        "fontSize": "9px", "fontWeight": "bold", "letterSpacing": "1.5px",
+        "color": C_MUTED, "margin": "0 0 4px 0"
+    }
     return html.Div([
-        html.H5("Today's Menu", style={"fontWeight": "700", "marginBottom": "4px"}),
+        html.H5("Today's Meal", style={
+            "fontWeight": "bold", "marginBottom": "3px",
+ "color": C_TEXT
+        }),
         html.P(meal["day"], style={
-            "color": "#888", "fontSize": "12px", "marginBottom": "16px"
+            "color": C_MUTED, "fontSize": "12px",
+            "marginBottom": "14px"
         }),
  
-        # Main dish section
+        # Main
         html.Div([
-            html.P("MAIN DISH", style={
-                "fontSize": "10px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 4px 0"
+            html.P("MAIN DISH", style=section_label),
+            html.H5(meal["main"]["name"], style={
+                "margin": "0 0 3px 0",
+ "color": C_TEXT
             }),
-            html.H5(meal["main"]["name"], style={"margin": "0 0 4px 0"}),
             html.P("Ingredients: " + ", ".join(meal["main"]["ingredients"]),
-                   style={"fontSize": "11px", "color": "#666", "margin": "0"})
+                   style={"fontSize": "11px", "color": C_MUTED,
+                          "margin": "0"
+})
         ], style={
-            "backgroundColor": "#fff8ee",
-            "borderLeft": "3px solid #e8a838",
-            "borderRadius": "0 8px 8px 0",
-            "padding": "12px",
-            "marginBottom": "10px"
+            "backgroundColor": "#fef8ef",
+            "borderLeft": f"3px solid {C_ACCENT}",
+            "borderRadius": "0 6px 6px 0",
+            "padding": "11px 14px",
+            "marginBottom": "8px"
         }),
  
-        # Sides section
+        # Sides
         html.Div([
-            html.P("SIDES", style={
-                "fontSize": "10px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 4px 0"
-            }),
+            html.P("SIDES", style=section_label),
             html.P(", ".join(meal["sides"]),
-                   style={"fontSize": "13px", "margin": "0"})
+                   style={"fontSize": "13px", "margin": "0",
+ "color": C_TEXT})
         ], style={
-            "backgroundColor": "#f8f8f8",
-            "borderRadius": "8px",
-            "padding": "12px",
-            "marginBottom": "10px"
+            "backgroundColor": "#f7f5f2",
+            "borderRadius": "6px",
+            "padding": "11px 14px",
+            "marginBottom": "8px"
         }),
  
-        # Dessert section
+        # Dessert
         html.Div([
-            html.P("DESSERT", style={
-                "fontSize": "10px", "fontWeight": "600",
-                "letterSpacing": "1px", "color": "#888", "margin": "0 0 4px 0"
+            html.P("DESSERT", style=section_label),
+            html.H5(meal["dessert"]["name"], style={
+                "margin": "0 0 3px 0",
+ "color": C_TEXT
             }),
-            html.H5(meal["dessert"]["name"], style={"margin": "0 0 4px 0"}),
             html.P("Ingredients: " + ", ".join(meal["dessert"]["ingredients"]),
-                   style={"fontSize": "11px", "color": "#666", "margin": "0"})
+                   style={"fontSize": "11px", "color": C_MUTED,
+                          "margin": "0"
+})
         ], style={
-            "backgroundColor": "#f0f4ff",
-            "borderLeft": "3px solid #7986cb",
-            "borderRadius": "0 8px 8px 0",
-            "padding": "12px"
-        })
+            "backgroundColor": "#f0f4f8",
+            "borderLeft": "3px solid #6b8cae",
+            "borderRadius": "0 6px 6px 0",
+            "padding": "11px 14px"
+        }),
  
     ], style=CARD_STYLE)
  
  
 def make_guidelines(nutrients, conditions):
     """
-    Builds the guidelines panel showing progress bars for each nutrient.
-    The progress bars turn red when a value is too low (or too high for sodium).
-    Condition-specific alerts are shown when a nutrient is clinically significant
-    for that patient's conditions.
+    Progress bars for each nutrient with condition-specific alerts.
+    reverse=True means lower is better (sodium).
     """
-    # List of nutrients to display.
-    # Format: (display label, key in nutrients dict, target value, unit, reverse)
-    # reverse=True means lower is better (like sodium)
     nutrient_targets = [
-        ("Energy (kcal)", "energy", 700,  "kcal", False),
-        ("Protein (g)",   "protein", 25,  "g",    False),
-        ("Carbohydrate (g)", "carbs", 60, "g",    False),
-        ("Dietary Fibre (g)", "fibre", 8, "g",    False),
-        ("Calcium (mg)",  "calcium", 300, "mg",   False),
-        ("Salt/Sodium (g)", "sodium", 5.0, "g",   True),
+        ("Energy (kcal)",      "energy",  700,  "kcal", False),
+        ("Protein (g)",        "protein",  25,  "g",    False),
+        ("Carbohydrate (g)",   "carbs",    60,  "g",    False),
+        ("Dietary fibre (g)",  "fibre",     8,  "g",    False),
+        ("Calcium (mg)",       "calcium", 300,  "mg",   False),
+        ("Salt / sodium (g)",  "sodium",    5,  "g",    True),
     ]
  
-    nutrient_rows = []
- 
+    rows = []
     for label, key, target, unit, reverse in nutrient_targets:
         value = nutrients.get(key, 0)
+        pct   = min(round(value / target * 100), 100)
  
-        # Calculate how much of the target is reached (capped at 100%)
-        pct = round((value / target) * 100)
-        if pct > 100:
-            pct = 100
- 
-        # Choose bar colour based on whether the value is good or bad
         if reverse:
-            # For sodium: green if under target, red if over
-            if value >= target:
-                bar_color = "#d94f3d"
-            else:
-                bar_color = "#4caf7d"
+            bar_color = C_RED if value >= target else C_GREEN
         else:
-            # For all other nutrients: green if close to target, red if low
-            if pct >= 85:
-                bar_color = "#4caf7d"
-            elif pct >= 60:
-                bar_color = "#e8a838"
-            else:
-                bar_color = "#d94f3d"
+            bar_color = C_GREEN if pct >= 85 else (C_ORANGE if pct >= 60 else C_RED)
  
-        # Default alert message
         alert = None
- 
-        # General alerts
         if reverse and value >= target:
-            alert = "Exceeds recommended limit. Review sodium-rich components."
+            alert = "Exceeds the recommended limit. Check sodium-rich components."
         elif not reverse and pct < 60:
-            alert = "Below target - consider adjusting meal components."
+            alert = "Below target — consider adjusting the meal."
  
-        # Condition-specific alerts (these override the general ones)
-        if key == "sodium" and "Hypertension" in conditions and value >= target * 0.9:
-            alert = "⚠ Hypertension: sodium limit critical. Review immediately."
+        # Condition-specific overrides
+        if key == "sodium"  and "Hypertension"     in conditions and value >= target * 0.9:
+            alert = "⚠ Hypertension: sodium is near the limit. Review immediately."
         if key == "protein" and "Malnutrition Risk" in conditions and pct < 80:
-            alert = "⚠ Malnutrition risk: protein supplementation strongly recommended."
-        if key == "calcium" and "Osteoporosis" in conditions and pct < 80:
-            alert = "⚠ Osteoporosis: calcium intake insufficient for bone health."
+            alert = "⚠ Malnutrition Risk: protein is low. Consider supplementation."
+        if key == "calcium" and "Osteoporosis"      in conditions and pct < 80:
+            alert = "⚠ Osteoporosis: calcium is insufficient for bone health."
  
-        # Build the row for this nutrient
-        nutrient_rows.append(html.Div([
-            # Label and value
+        rows.append(html.Div([
             html.Div([
-                html.Span(label, style={"fontSize": "12px", "fontWeight": "600"}),
-                html.Span(str(value) + " / " + str(target) + " " + unit, style={
-                    "fontSize": "11px", "color": "#888", "float": "right"
+                html.Span(label, style={
+                    "fontSize": "12px", "fontWeight": "bold",
+                    "color": C_TEXT
+                }),
+                html.Span(f"{value} / {target} {unit}", style={
+                    "fontSize": "11px", "color": C_MUTED, "float": "right"
                 })
             ]),
-            # Progress bar
+            # Bar track
             html.Div(
                 html.Div(style={
-                    "width": str(pct) + "%",
+                    "width": f"{pct}%",
                     "height": "100%",
                     "backgroundColor": bar_color,
-                    "borderRadius": "4px"
+                    "borderRadius": "4px",
+                    "transition": "width 0.4s ease"
                 }),
                 style={
-                    "backgroundColor": "#f0f0f0",
+                    "backgroundColor": "#ede9e3",
                     "borderRadius": "4px",
-                    "height": "8px",
-                    "margin": "4px 0"
+                    "height": "7px",
+                    "margin": "5px 0"
                 }
             ),
-            # Alert message (only shown if there is an alert)
             html.P(alert, style={
                 "fontSize": "10px",
                 "color": "white",
-                "backgroundColor": "#d94f3d",
+                "backgroundColor": C_RED,
                 "borderRadius": "4px",
-                "padding": "4px 8px",
-                "margin": "4px 0 8px 0"
-            }) if alert else html.Div(style={"marginBottom": "8px"})
+                "padding": "3px 8px",
+                "margin": "3px 0 10px 0"
+            }) if alert else html.Div(style={"marginBottom": "10px"})
         ]))
  
     return html.Div([
-        html.H5("Guidelines", style={"fontWeight": "700", "marginBottom": "16px"}),
-        html.Div(nutrient_rows)
+        html.H5("Nutrient guidelines", style={
+            "fontWeight": "bold", "marginBottom": "14px",
+ "color": C_TEXT
+        }),
+        html.Div(rows)
     ], style=CARD_STYLE)
  
  
 def make_conditions_card(patient):
-    """
-    Builds the active conditions card showing primary, risk, and inactive conditions.
-    Each condition type has a different colour to show its severity.
-    """
-    # Colour scheme for each condition type
+    """Shows all conditions grouped by type with colour-coded badges."""
     badge_colors = {
-        "primary":  {"bg": "#fff3e0", "color": "#e8a838", "border": "#e8a838"},
-        "risk":     {"bg": "#fff3e0", "color": "#ff7043", "border": "#ff7043"},
-        "inactive": {"bg": "#f5f5f5", "color": "#bbb",    "border": "#ddd"}
+        "primary":  {"bg": "#fef5e7", "color": C_ACCENT,  "border": C_ACCENT},
+        "risk":     {"bg": "#fdf0ee", "color": "#b03a2e",  "border": "#c0532a"},
+        "inactive": {"bg": "#f5f5f5", "color": "#aaa",     "border": "#ddd"}
     }
  
     badges = []
     for condition_type, condition_list in patient["conditions"].items():
-        colors = badge_colors[condition_type]
-        for condition_name in condition_list:
+        c = badge_colors[condition_type]
+        for name in condition_list:
             badges.append(html.Div([
                 html.Span(condition_type.capitalize(), style={
-                    "fontSize": "10px", "color": "#888", "display": "block"
+                    "fontSize": "9px", "color": C_MUTED,
+                    "display": "block"
                 }),
-                html.Span(condition_name, style={
-                    "fontSize": "13px", "fontWeight": "600", "color": colors["color"]
+                html.Span(name, style={
+                    "fontSize": "12px", "fontWeight": "bold",
+                    "color": c["color"]
                 })
             ], style={
-                "backgroundColor": colors["bg"],
-                "border": "1px solid " + colors["border"],
-                "borderRadius": "8px",
-                "padding": "8px 12px",
-                "margin": "4px"
+                "backgroundColor": c["bg"],
+                "border": f"1px solid {c['border']}",
+                "borderRadius": "7px",
+                "padding": "7px 12px",
+                "margin": "3px"
             }))
  
-    # Show a message if the patient has no conditions at all
-    has_any_conditions = any(patient["conditions"].values())
-    if not has_any_conditions:
+    if not any(patient["conditions"].values()):
         badges.append(html.P("No active conditions", style={
-            "color": "#888", "fontSize": "13px", "padding": "8px"
+            "color": C_MUTED, "fontSize": "13px",
+            "padding": "6px"
         }))
  
     return html.Div([
-        html.H5("Active Conditions", style={"fontWeight": "700", "marginBottom": "12px"}),
+        html.H5("Active conditions", style={
+            "fontWeight": "bold", "marginBottom": "10px",
+ "color": C_TEXT
+        }),
         html.Div(badges, style={"display": "flex", "flexWrap": "wrap"})
     ], style=CARD_STYLE)
  
@@ -819,33 +843,41 @@ def make_conditions_card(patient):
 # SECTION 5: PAGE LAYOUTS
 # Each function builds a full page by combining the helper components above.
 # =============================================================================
- 
-def page_dashboard(patient, meal_key):
-    """
-    Builds the main dashboard page for a given patient and meal.
-    This is the default page when the app loads.
-    """
-    meal = SAMPLE_MEALS[meal_key]
+
+def page_dashboard(patient, meal_key, api_score=None):
+    meal      = SAMPLE_MEALS[meal_key]
     nutrients = MEAL_NUTRIENTS[meal_key]
- 
-    # Combine primary and risk conditions for scoring
     all_conditions = patient["conditions"]["primary"] + patient["conditions"]["risk"]
- 
-    # Calculate the nutritional grade
-    grade, grade_description = calculate_grade(nutrients, all_conditions)
- 
+    
+    # Use the real API score if we have one, otherwise fall back to local
+    if api_score:
+        grade             = api_score["grade"]
+        grade_description = api_score["grade_description"]
+        # Use real nutrients from the API response if available
+        api_nutrients = api_score.get("nutrients")
+        if api_nutrients:
+            nutrients = {
+                "energy":  round(api_nutrients.get("energy_kcal", nutrients["energy"]), 0),
+                "protein": round(api_nutrients.get("protein_g",   nutrients["protein"]), 1),
+                "carbs":   nutrients["carbs"],
+                "fibre":   round(api_nutrients.get("fiber_g",     nutrients["fibre"]), 1),
+                "calcium": round(api_nutrients.get("calcium_mg",  nutrients["calcium"]), 0),
+                "sodium":  round(api_nutrients.get("sodium_mg", 0) / 1000, 2),
+        }
+    else:
+        grade, grade_description = calculate_grade(nutrients, all_conditions)
+
     return html.Div([
         make_patient_card(patient),
         make_score_cards(nutrients, grade, grade_description),
-        # Bottom row: conditions + meal on the left, guidelines on the right
         html.Div([
             html.Div([
                 make_conditions_card(patient),
-                make_meal_card(meal)
+                make_meal_card(meal),
             ], style={"width": "45%", "paddingRight": "12px"}),
             html.Div([
-                make_guidelines(nutrients, all_conditions)
-            ], style={"width": "55%"})
+                make_guidelines(nutrients, all_conditions),
+            ], style={"width": "55%"}),
         ], style={"display": "flex"})
     ])
  
@@ -857,60 +889,62 @@ def page_patients():
     """
     patient_cards = []
  
+    cards = []
     for patient in PATIENTS:
-        # Get all active conditions for display
         all_conditions = patient["conditions"]["primary"] + patient["conditions"]["risk"]
-        if all_conditions:
-            conditions_text = ", ".join(all_conditions)
-        else:
-            conditions_text = "No active conditions"
+        condition_text = ", ".join(all_conditions) if all_conditions else "No active conditions"
  
-        patient_cards.append(
+        cards.append(html.Div([
             html.Div([
+                html.Div(patient["avatar"], style={
+                    "width": "42px", "height": "42px", "borderRadius": "50%",
+                    "backgroundColor": C_ACCENT, "color": "white",
+                    "display": "flex", "alignItems": "center",
+                    "justifyContent": "center", "fontWeight": "bold",
+                    "fontSize": "13px", "marginRight": "14px", "flexShrink": "0"
+                }),
                 html.Div([
-                    # Avatar
-                    html.Div(patient["avatar"], style={
-                        "width": "44px", "height": "44px", "borderRadius": "50%",
-                        "backgroundColor": "#e8a838", "color": "white",
-                        "display": "flex", "alignItems": "center",
-                        "justifyContent": "center", "fontWeight": "bold",
-                        "fontSize": "14px", "marginRight": "14px", "flexShrink": "0"
+                    html.H5(patient["name"], style={
+                        "margin": "0 0 2px 0",
+ "color": C_TEXT
                     }),
-                    # Patient info
-                    html.Div([
-                        html.H5(patient["name"], style={"margin": "0 0 2px 0"}),
-                        html.P(
-                            "#" + patient["id"] + " · " + patient["sex"] +
-                            " · Age " + str(patient["age"]) + " · " + patient["location"],
-                            style={"margin": "0", "color": "#666", "fontSize": "12px"}
-                        ),
-                        html.P(conditions_text, style={
-                            "margin": "4px 0 0 0", "fontSize": "12px",
-                            "color": "#e8a838", "fontWeight": "600"
-                        })
-                    ]),
-                    # View button - the id is used by the callback to know which patient was clicked
-                    html.Button("View Dashboard", id="view-patient-" + patient["id"], style={
-                        "marginLeft": "auto",
-                        "backgroundColor": "#e8a838",
-                        "border": "none",
-                        "borderRadius": "8px",
-                        "padding": "8px 16px",
-                        "color": "white",
-                        "cursor": "pointer",
-                        "fontWeight": "600"
+                    html.P(
+                        f"#{patient['id']} · {patient['sex']} · Age {patient['age']} · {patient['location']}",
+                        style={"margin": "0", "color": C_MUTED,
+                               "fontSize": "12px"
+}
+                    ),
+                    html.P(condition_text, style={
+                        "margin": "3px 0 0 0", "fontSize": "12px",
+                        "color": C_ACCENT, "fontWeight": "bold"
                     })
-                ], style={"display": "flex", "alignItems": "center"})
-            ], style=CARD_STYLE)
-        )
+                ]),
+                html.Button("View dashboard", id="view-patient-" + patient["id"], style={
+                    "marginLeft": "auto",
+                    "backgroundColor": C_ACCENT,
+                    "border": "none",
+                    "borderRadius": "6px",
+                    "padding": "7px 14px",
+                    "color": "white",
+                    "cursor": "pointer",
+                    "fontWeight": "bold",
+                    "fontSize": "12px"
+                })
+            ], style={"display": "flex", "alignItems": "center"})
+        ], style=CARD_STYLE))
  
     return html.Div([
-        html.H4("Patients", style={"fontWeight": "700", "marginBottom": "20px"}),
+        html.H4("Patients", style={
+            "fontWeight": "bold", "marginBottom": "6px",
+ "color": C_TEXT
+        }),
         html.P(
-            str(len(PATIENTS)) + " synthetic patients — for testing and demonstration purposes only.",
-            style={"color": "#888", "fontSize": "13px", "marginBottom": "20px"}
+            f"{len(PATIENTS)} synthetic patients — for testing and demonstration only.",
+            style={"color": C_MUTED, "fontSize": "13px",
+                   "marginBottom": "20px"
+}
         ),
-        html.Div(patient_cards)
+        html.Div(cards)
     ])
  
  
@@ -920,46 +954,53 @@ def page_disease_profiles():
     used in the scoring algorithm.
     """
     profile_cards = []
- 
     for profile in CONDITION_PROFILES:
-        multiplier_rows = []
- 
+        rows = []
         for nutrient_name, effect_text, effect_color in profile["multipliers"]:
-            multiplier_rows.append(
-                html.Div([
-                    html.Span(nutrient_name, style={
-                        "fontSize": "13px", "fontWeight": "600", "flex": "1"
-                    }),
-                    html.Span(effect_text, style={
-                        "fontSize": "12px",
-                        "color": "white",
-                        "backgroundColor": effect_color,
-                        "borderRadius": "12px",
-                        "padding": "2px 10px"
-                    })
-                ], style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "justifyContent": "space-between",
-                    "padding": "8px 0",
-                    "borderBottom": "1px solid #f0f0f0"
+            rows.append(html.Div([
+                html.Span(nutrient_name, style={
+                    "fontSize": "13px", "fontWeight": "bold",
+                    "flex": "1",
+ "color": C_TEXT
+                }),
+                html.Span(effect_text, style={
+                    "fontSize": "11px",
+                    "color": "white",
+                    "backgroundColor": effect_color,
+                    "borderRadius": "12px",
+                    "padding": "2px 10px"
                 })
-            )
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "space-between",
+                "padding": "7px 0",
+                "borderBottom": f"1px solid {C_BORDER}"
+            }))
  
         profile_cards.append(html.Div([
-            html.H5(profile["name"], style={"fontWeight": "700", "marginBottom": "4px"}),
-            html.P(profile["description"], style={
-                "color": "#666", "fontSize": "12px", "marginBottom": "12px"
+            html.H5(profile["name"], style={
+                "fontWeight": "bold", "marginBottom": "3px",
+ "color": C_TEXT
             }),
-            html.Div(multiplier_rows)
+            html.P(profile["description"], style={
+                "color": C_MUTED, "fontSize": "12px",
+                "marginBottom": "10px"
+            }),
+            html.Div(rows)
         ], style=CARD_STYLE))
  
     return html.Div([
-        html.H4("Disease Profiles", style={"fontWeight": "700", "marginBottom": "8px"}),
+        html.H4("Disease profiles", style={
+            "fontWeight": "bold", "marginBottom": "6px",
+ "color": C_TEXT
+        }),
         html.P(
-            "Condition-specific multipliers applied to the nutritional scoring algorithm. "
-            "Based on NNR 2023 and Institutionskost 2025 clinical guidelines.",
-            style={"color": "#666", "fontSize": "13px", "marginBottom": "20px"}
+            "How each condition changes the scoring weights. "
+            "Based on NNR 2023 and Institutionskost 2025.",
+            style={"color": C_MUTED, "fontSize": "13px",
+                   "marginBottom": "20px"
+}
         ),
         html.Div(profile_cards)
     ])
@@ -1001,11 +1042,16 @@ def page_placeholder(title, message):
     A simple placeholder page for sections that are not yet implemented.
     """
     return html.Div([
-        html.H4(title, style={"fontWeight": "700", "marginBottom": "8px"}),
+        html.H4(title, style={
+            "fontWeight": "bold", "marginBottom": "8px",
+ "color": C_TEXT
+        }),
         html.Div([
-            html.P("🚧", style={"fontSize": "48px", "margin": "0 0 16px 0"}),
-            html.P(message, style={"color": "#666", "fontSize": "14px"})
-        ], style={**CARD_STYLE, "textAlign": "center", "padding": "60px 20px"})
+            html.P("🚧", style={"fontSize": "44px", "margin": "0 0 12px 0"}),
+            html.P(message, style={
+                "color": C_MUTED, "fontSize": "14px"
+            })
+        ], style={**CARD_STYLE, "textAlign": "center", "padding": "56px 20px"})
     ])
  
  
@@ -1023,61 +1069,67 @@ def make_add_meal_modal():
     """
     # Build dropdown options from the patients list
     patient_options = []
-    for patient in PATIENTS:
-        patient_options.append({
-            "label": patient["name"] + " (#" + patient["id"] + ")",
-            "value": patient["id"]
-        })
+    patient_options = [
+        {"label": f"{p['name']} (#{p['id']})", "value": p["id"]}
+        for p in PATIENTS
+    ]
  
     # Build dropdown options from the meals list
-    meal_options = []
-    for meal_key in SAMPLE_MEALS.keys():
-        meal_options.append({"label": meal_key, "value": meal_key})
+    meal_options = [
+        {"label": k, "value": k} for k in SAMPLE_MEALS.keys()
+    ]
  
     return dbc.Modal([
-        dbc.ModalHeader(dbc.ModalTitle("Score a Meal")),
+        dbc.ModalHeader(dbc.ModalTitle("Score a meal", style={
+ "color": C_TEXT
+        })),
         dbc.ModalBody([
             html.P(
-                "Select a patient and a menu day to calculate the nutritional score.",
-                style={"color": "#666", "marginBottom": "20px"}
+                "Pick a patient and a menu day. The system will run the scoring algorithm "
+                "and show you a grade preview before you confirm.",
+                style={"color": C_MUTED, "marginBottom": "18px",
+                       "fontSize": "13px"
+}
             ),
- 
-            html.Label("Select Patient", style={"fontWeight": "600", "marginBottom": "6px"}),
+            html.Label("Patient", style={
+                "fontWeight": "bold", "marginBottom": "5px"
+            }),
             dcc.Dropdown(
                 id="modal-patient-select",
                 options=patient_options,
                 placeholder="Choose a patient...",
-                style={"marginBottom": "16px"}
+                style={"marginBottom": "14px"
+}
             ),
- 
-            html.Label("Select Menu Day", style={"fontWeight": "600", "marginBottom": "6px"}),
+            html.Label("Menu day", style={
+                "fontWeight": "bold", "marginBottom": "5px"
+            }),
             dcc.Dropdown(
                 id="modal-meal-select",
                 options=meal_options,
                 placeholder="Choose a day...",
-                style={"marginBottom": "16px"}
+                style={"marginBottom": "14px"
+}
             ),
- 
-            # Preview area - updated by a callback when selections change
-            html.Div(id="modal-preview", style={"marginTop": "16px"})
+            html.Div(id="modal-preview", style={"marginTop": "14px"})
         ]),
         dbc.ModalFooter([
             html.Button("Cancel", id="modal-cancel", style={
                 "backgroundColor": "white",
-                "border": "1px solid #ddd",
-                "borderRadius": "8px",
-                "padding": "8px 20px",
+                "border": f"1px solid {C_BORDER}",
+                "borderRadius": "6px",
+                "padding": "7px 18px",
                 "marginRight": "8px",
                 "cursor": "pointer"
             }),
             html.Button("Score this meal →", id="modal-score", style={
-                "backgroundColor": "#e8a838",
+                "backgroundColor": C_ACCENT,
                 "border": "none",
-                "borderRadius": "8px",
-                "padding": "8px 20px",
+                "borderRadius": "6px",
+                "padding": "7px 18px",
                 "color": "white",
                 "cursor": "pointer",
-                "fontWeight": "700"
+                "fontWeight": "bold"
             })
         ])
     ], id="add-meal-modal", is_open=False, size="lg")
@@ -1104,6 +1156,8 @@ app.layout = html.Div([
     dcc.Store(id="current-page", data="dashboard"),
     dcc.Store(id="selected-patient-id", data=PATIENTS[0]["id"]),
     dcc.Store(id="selected-meal-key", data=list(SAMPLE_MEALS.keys())[0]),
+    dcc.Store(id="last-api-score",      data=None), 
+
  
     # Sidebar (always visible on the left)
     make_sidebar(),
@@ -1117,41 +1171,47 @@ app.layout = html.Div([
         # Top bar with title and buttons
         html.Div([
             html.H3("Patient Nutrition Dashboard", id="page-title", style={
-                "margin": "0", "fontWeight": "700", "color": "#e8a838"
+                "margin": "0", "fontWeight": "bold",
+                "color": C_TEXT,
+                "fontSize": "20px"
             }),
             html.Div([
                 html.Button("📄 Export PDF", id="export-pdf-btn", style={
                     "backgroundColor": "white",
-                    "border": "1px solid #ddd",
-                    "borderRadius": "8px",
-                    "padding": "8px 16px",
-                    "marginRight": "12px",
+                    "border": f"1px solid {C_BORDER}",
+                    "borderRadius": "6px",
+                    "padding": "7px 14px",
+                    "marginRight": "10px",
                     "cursor": "pointer",
-                    "fontWeight": "600"
+                    "fontWeight": "bold",
+                    "fontSize": "12px",
+                    "color": C_TEXT
                 }),
-                html.Button("+ ADD Meal", id="open-modal-btn", style={
-                    "backgroundColor": "#e8a838",
+                html.Button("+ Add meal", id="open-modal-btn", style={
+                    "backgroundColor": C_ACCENT,
                     "border": "none",
-                    "borderRadius": "8px",
-                    "padding": "8px 16px",
+                    "borderRadius": "6px",
+                    "padding": "7px 14px",
                     "color": "white",
                     "cursor": "pointer",
-                    "fontWeight": "700"
+                    "fontWeight": "bold",
+                    "fontSize": "12px"
                 })
             ])
         ], style={
             "display": "flex",
             "justifyContent": "space-between",
             "alignItems": "center",
-            "marginBottom": "20px"
+            "marginBottom": "22px",
+            "paddingBottom": "14px",
+            "borderBottom": f"1px solid {C_BORDER}"
         }),
  
-        # Page content area - updated by the render_page callback
         html.Div(id="page-content")
  
     ], style=CONTENT_STYLE)
 ])
- 
+
  
 # =============================================================================
 # SECTION 8: CALLBACKS
@@ -1164,51 +1224,45 @@ app.layout = html.Div([
 # It returns the right page layout and updates the title in the top bar.
 @app.callback(
     Output("page-content", "children"),
-    Output("page-title", "children"),
-    Input("current-page", "data"),
+    Output("page-title",   "children"),
+    Input("current-page",        "data"),
     Input("selected-patient-id", "data"),
-    Input("selected-meal-key", "data")
+    Input("selected-meal-key",   "data"),
+    Input("last-api-score",      "data"), 
 )
-def render_page(page, patient_id, meal_key):
+
+def render_page(page, patient_id, meal_key, api_score):
     # Find the patient object that matches the selected id
-    selected_patient = PATIENTS[0]
-    for patient in PATIENTS:
-        if patient["id"] == patient_id:
-            selected_patient = patient
-            break
+    selected_patient = next(
+        (p for p in PATIENTS if p["id"] == patient_id), PATIENTS[0]
+    )
  
     # Map page names to their display titles
     page_titles = {
-        "dashboard": "Patient Nutrition Dashboard",
-        "patients": "Patients",
-        "meal-plans": "Meal Plans",
+        "dashboard":        "Patient Nutrition Dashboard",
+        "patients":         "Patients",
+        "meal-plans":       "Meal Plans",
         "nutritional-gaps": "Nutritional Gaps",
-        "frida-foods": "Frida Foods",
+        "frida-foods":      "Frida Foods",
         "disease-profiles": "Disease Profiles",
-        "data-sources": "Data Sources",
-        "settings": "Settings"
+        "data-sources":     "Data Sources",
+        "settings":         "Settings"
     }
     title = page_titles.get(page, "NutriScan")
  
-    # Return the right page layout based on the current page
-    if page == "dashboard":
-        return page_dashboard(selected_patient, meal_key), title
-    elif page == "patients":
-        return page_patients(), title
-    elif page == "disease-profiles":
-        return page_disease_profiles(), title
-    elif page == "data-sources":
-        return page_data_sources(), title
-    elif page == "nutritional-gaps":
-        return page_placeholder("Nutritional Gaps", "Nutritional gap analysis coming soon."), title
-    elif page == "frida-foods":
-        return page_placeholder("Frida Foods", "Frida food database browser coming soon."), title
-    elif page == "settings":
-        return page_placeholder("Settings", "Settings panel reserved for future development."), title
-    elif page == "meal-plans":
-        return page_placeholder("Meal Plans", "Full meal plan history coming soon."), title
-    else:
-        return page_dashboard(selected_patient, meal_key), title
+    page_map = {
+        "dashboard":        lambda: page_dashboard(selected_patient, meal_key, api_score),
+        "patients":         page_patients,
+        "disease-profiles": page_disease_profiles,
+        "data-sources":     page_data_sources,
+        "nutritional-gaps": lambda: page_placeholder("Nutritional Gaps", "Coming soon — will show weekly nutrient gaps across all patients."),
+        "frida-foods":      lambda: page_placeholder("Frida Foods", "Coming soon — browse the Frida 5.5 food database."),
+        "settings":         lambda: page_placeholder("Settings", "Reserved for future configuration options."),
+        "meal-plans":       lambda: page_placeholder("Meal Plans", "Coming soon — full meal plan history for each patient.")
+    }
+ 
+    content_fn = page_map.get(page, lambda: page_dashboard(selected_patient, meal_key))
+    return content_fn(), title
  
  
 # --- Callback 2: Sidebar navigation ---
@@ -1222,63 +1276,69 @@ def render_page(page, patient_id, meal_key):
     ]],
     prevent_initial_call=True
 )
+
 def navigate(*args):
-    # ctx.triggered_id tells us which element triggered the callback
     triggered = ctx.triggered_id
-    if triggered:
-        # Remove the "nav-" prefix to get just the page name
-        return triggered.replace("nav-", "")
-    return "dashboard"
+    return triggered.replace("nav-", "") if triggered else "dashboard"
  
  
 # --- Callback 3: Open/close modal and score the meal ---
 # This handles three different buttons: open, cancel, and score.
 # ctx.triggered_id tells us which button was clicked.
 @app.callback(
-    Output("add-meal-modal", "is_open"),
-    Output("selected-patient-id", "data"),
-    Output("selected-meal-key", "data"),
-    Output("current-page", "data", allow_duplicate=True),
-    Input("open-modal-btn", "n_clicks"),
-    Input("modal-cancel", "n_clicks"),
-    Input("modal-score", "n_clicks"),
+    Output("add-meal-modal",     "is_open"),
+    Output("selected-patient-id","data"),
+    Output("selected-meal-key",  "data"),
+    Output("current-page",       "data", allow_duplicate=True),
+    Output("last-api-score",     "data"),
+    Input("open-modal-btn",  "n_clicks"),
+    Input("modal-cancel",    "n_clicks"),
+    Input("modal-score",     "n_clicks"),
     State("modal-patient-select", "value"),
-    State("modal-meal-select", "value"),
-    State("add-meal-modal", "is_open"),
-    State("selected-patient-id", "data"),
-    State("selected-meal-key", "data"),
+    State("modal-meal-select",    "value"),
+    State("add-meal-modal",       "is_open"),
+    State("selected-patient-id",  "data"),
+    State("selected-meal-key",    "data"),
     prevent_initial_call=True
 )
 def handle_modal(open_click, cancel_click, score_click,
                  selected_patient, selected_meal,
                  is_open, current_patient, current_meal):
- 
+
     triggered = ctx.triggered_id
- 
-    # Open button was clicked - show the modal
+
     if triggered == "open-modal-btn":
-        return True, current_patient, current_meal, "dashboard"
- 
-    # Cancel button was clicked - close the modal without changing anything
+        return True, current_patient, current_meal, "dashboard", None
+
     if triggered == "modal-cancel":
-        return False, current_patient, current_meal, "dashboard"
- 
-    # Score button was clicked - update the dashboard with the selected patient and meal
+        return False, current_patient, current_meal, "dashboard", None
+
     if triggered == "modal-score":
-        if selected_patient:
-            new_patient = selected_patient
-        else:
-            new_patient = current_patient
- 
-        if selected_meal:
-            new_meal = selected_meal
-        else:
-            new_meal = current_meal
- 
-        return False, new_patient, new_meal, "dashboard"
- 
-    # Fallback - no change
-    return is_open, current_patient, current_meal, "dashboard"
+        new_patient = selected_patient or current_patient
+        new_meal    = selected_meal    or current_meal
+
+        # Fetch the real score from the API to display on the main dashboard
+        if selected_patient and selected_meal:
+            patient_obj = next((p for p in PATIENTS if p["id"] == new_patient), None)
+            if patient_obj:
+                conditions = patient_obj["conditions"]["primary"] + patient_obj["conditions"]["risk"]
+                pdf_map = {
+                    "March 2026": "sample_data/menuplan-marts-2026.pdf",
+                    "April 2026": "sample_data/menuplan-april-2026.pdf",
+                }
+                period   = new_meal.split(" - ")[0]
+                pdf_path = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
+                try:
+                    day_number = int(new_meal.split("Day")[-1].strip())
+                except (ValueError, IndexError):
+                    day_number = 1
+
+                api_result = api_score_meal(pdf_path, day_number, conditions, new_patient)
+                return False, new_patient, new_meal, "dashboard", api_result
+
+        return False, new_patient, new_meal, "dashboard", None
+
+    return is_open, current_patient, current_meal, "dashboard", None
  
  
 # --- Callback 4: Live preview in the modal ---
@@ -1287,70 +1347,96 @@ def handle_modal(open_click, cancel_click, score_click,
 @app.callback(
     Output("modal-preview", "children"),
     Input("modal-patient-select", "value"),
-    Input("modal-meal-select", "value")
+    Input("modal-meal-select",    "value"),
 )
 def update_modal_preview(patient_id, meal_key):
-    # If either dropdown is empty, show a hint message
     if not patient_id or not meal_key:
         return html.P(
-            "Select a patient and meal day to see a preview.",
-            style={"color": "#aaa", "fontSize": "12px"}
+            "Select a patient and a meal day to see a grade preview.",
+            style={"color": "#aaa", "fontSize": "12px"
+}
         )
  
-    # Find the selected patient
-    selected_patient = None
-    for patient in PATIENTS:
-        if patient["id"] == patient_id:
-            selected_patient = patient
-            break
- 
-    meal = SAMPLE_MEALS.get(meal_key)
+    selected_patient = next((p for p in PATIENTS if p["id"] == patient_id), None)
+    meal      = SAMPLE_MEALS.get(meal_key)
     nutrients = MEAL_NUTRIENTS.get(meal_key, {})
  
     if not selected_patient or not meal:
         return None
  
-    # Calculate the grade for this patient + meal combination
     all_conditions = selected_patient["conditions"]["primary"] + selected_patient["conditions"]["risk"]
-    grade, grade_description = calculate_grade(nutrients, all_conditions)
+ 
+    # Try the API first for a real pipeline score; fall back to local scoring.
+    # Work out which PDF and day number to use based on the selected meal key
+    pdf_map = {
+        "March 2026": "sample_data/menuplan-marts-2026.pdf",
+        "April 2026": "sample_data/menuplan-april-2026.pdf",
+    }
+    period = meal_key.split(" - ")[0]
+    pdf_path = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
+
+    try:
+        day_number = int(meal_key.split("Day")[-1].strip())
+    except (ValueError, IndexError):
+        day_number = 1
+
+    api_result = api_score_meal(
+        pdf_path=pdf_path,
+        day_number=day_number,
+        conditions=all_conditions,
+        patient_id=patient_id,
+    )
+
+    if api_result:
+        grade             = api_result["grade"]
+        grade_description = api_result["grade_description"]
+        source_label      = "Live score via API"
+        source_color      = C_GREEN
+    else:
+        grade, grade_description = calculate_grade(nutrients, all_conditions)
+        source_label = "Local score (API offline)"
+        source_color = C_ORANGE
+ 
     grade_color = GRADE_COLORS.get(grade, "#888")
  
-    # Show a small preview card
     return html.Div([
-        html.Hr(),
-        html.P("Preview", style={
-            "fontWeight": "600", "color": "#888",
-            "fontSize": "11px", "letterSpacing": "1px"
+        html.Hr(style={"borderColor": C_BORDER}),
+        html.P("PREVIEW", style={
+            "fontWeight": "bold", "color": C_MUTED,
+            "fontSize": "10px", "letterSpacing": "1.5px"
         }),
         html.Div([
-            # Patient and meal info
             html.Div([
-                html.P("Patient: " + selected_patient["name"],
-                       style={"margin": "0", "fontWeight": "600"}),
-                html.P("Meal: " + meal["main"]["name"] + " + " + meal["dessert"]["name"],
-                       style={"margin": "0", "color": "#666", "fontSize": "12px"}),
-                html.P("Conditions: " + (", ".join(all_conditions) if all_conditions else "None"),
-                       style={"margin": "0", "color": "#666", "fontSize": "12px"})
+                html.P(f"Patient: {selected_patient['name']}",
+                       style={"margin": "0", "fontWeight": "bold",
+ "color": C_TEXT}),
+                html.P(f"Meal: {meal['main']['name']} + {meal['dessert']['name']}",
+                       style={"margin": "0", "color": C_MUTED,
+                              "fontSize": "12px"
+}),
+                html.P(f"Conditions: {', '.join(all_conditions) if all_conditions else 'None'}",
+                       style={"margin": "0", "color": C_MUTED, "fontSize": "12px"}),
+                html.P(source_label, style={
+                    "margin": "4px 0 0 0", "fontSize": "10px",
+                    "color": source_color, "fontWeight": "bold"
+                })
             ], style={"flex": "1"}),
-            # Grade preview
             html.Div([
                 html.Span(grade, style={
                     "fontSize": "48px",
-                    "fontWeight": "900",
+                    "fontWeight": "bold",
                     "color": grade_color,
                     "lineHeight": "1"
                 }),
                 html.P(grade_description, style={
-                    "fontSize": "11px",
-                    "color": grade_color,
-                    "fontWeight": "600",
-                    "margin": "0"
+                    "fontSize": "11px", "color": grade_color,
+                    "fontWeight": "bold", "margin": "0"
                 })
             ], style={"textAlign": "center"})
         ], style={
             "display": "flex",
             "alignItems": "center",
-            "backgroundColor": "#f8f8f8",
+            "backgroundColor": "#f7f5f2",
             "borderRadius": "8px",
             "padding": "12px"
         })
@@ -1362,6 +1448,6 @@ def update_modal_preview(patient_id, meal_key):
 # This block only runs when you execute this file directly.
 # =============================================================================
 if __name__ == "__main__":
-    print("Starting NutriScan dashboard...")
-    print("Open your browser at: http://127.0.0.1:8050")
+    print("Starting NutriScan...")
+    print("Open http://127.0.0.1:8050 in your browser")
     app.run(debug=True)

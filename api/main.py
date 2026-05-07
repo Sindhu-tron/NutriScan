@@ -15,10 +15,14 @@ Then open the auto-generated docs in the browser:
 """
 
 import sqlite3
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# Add project root to path so pipeline imports work when running uvicorn from api/
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +30,7 @@ from pydantic import BaseModel
 
 # Make sure the pipeline package is importable when running uvicorn from the project root
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DB_FILE = PROJECT_ROOT / "nutriscan.db"
+DB_FILE = PROJECT_ROOT / "pipeline" / "nutriscan.db"
 
 
 # Pydantic models
