@@ -1035,6 +1035,311 @@ def page_data_sources():
         ),
         html.Div(source_cards)
     ])
+
+def page_meal_plans():
+    """
+    Fetches and displays the parsed meal list for all four menu PDFs.
+    Calls POST /menu/parse on the API for each menu.
+    Falls back to a message if the API is offline.
+    """
+    menus = [
+        ("March 2026 — Normal",      "sample_data/menuplan-marts-2026.pdf"),
+        ("March 2026 — Pescetarisk", "sample_data/pescetarisk-menuplan-vegetarretter-samt-fiskskaldyr.pdf"),
+        ("April 2026 — Normal",      "sample_data/menuplan-april-2026.pdf"),
+        ("April 2026 — Pescetarisk", "sample_data/menuplan-april-2026-pescetarisk.pdf"),
+    ]
+
+    # Try to fetch each menu from the API
+    fetched = {}
+    for title, pdf_path in menus:
+        try:
+            r = requests.post(
+                f"{API_URL}/menu/parse",
+                json={"pdf_path": pdf_path},
+                timeout=15,
+            )
+            if r.status_code == 200:
+                fetched[title] = r.json()
+        except Exception:
+            pass
+
+    if not fetched:
+        return page_placeholder(
+            "Meal Plans",
+            "Could not load menus — make sure the API is running."
+        )
+
+    def make_menu_section(title, meals):
+        if not meals:
+            return html.Div()
+
+        rows = []
+        for meal in meals:
+            veg_badge = html.Span("Vegetarisk", style={
+                "backgroundColor": "#e8f5e9",
+                "color": "#2d7d46",
+                "border": "1px solid #2d7d46",
+                "borderRadius": "12px",
+                "padding": "1px 8px",
+                "fontSize": "10px",
+                "fontWeight": "bold",
+                "marginLeft": "8px",
+            }) if meal.get("vegetarian") else None
+
+            rows.append(html.Div([
+                # Day number badge
+                html.Div(str(meal.get("day_number", "")), style={
+                    "width": "32px",
+                    "height": "32px",
+                    "borderRadius": "50%",
+                    "backgroundColor": C_ACCENT,
+                    "color": "white",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "fontWeight": "bold",
+                    "fontSize": "12px",
+                    "flexShrink": "0",
+                    "marginRight": "14px",
+                }),
+                # Meal info
+                html.Div([
+                    html.Div([
+                        html.Span(meal.get("main", ""), style={
+                            "fontWeight": "bold",
+                            "fontSize": "14px",
+                            "color": C_TEXT,
+                        }),
+                        veg_badge,
+                    ], style={"display": "flex", "alignItems": "center",
+                              "marginBottom": "2px"}),
+                    html.P(
+                        "Sides: " + ", ".join(meal.get("sides", [])) if meal.get("sides") else "",
+                        style={"margin": "0", "color": C_MUTED, "fontSize": "11px"}
+                    ),
+                    html.P(
+                        "Dessert: " + meal.get("dessert", ""),
+                        style={"margin": "0", "color": C_MUTED, "fontSize": "11px"}
+                    ),
+                ], style={"flex": "1"}),
+                # Day name on the right
+                html.Span(meal.get("day_name", ""), style={
+                    "color": C_MUTED,
+                    "fontSize": "12px",
+                    "alignSelf": "center",
+                }),
+            ], style={
+                "display": "flex",
+                "alignItems": "flex-start",
+                "padding": "12px 0",
+                "borderBottom": f"1px solid {C_BORDER}",
+            }))
+
+        return html.Div([
+            html.H5(title, style={
+                "fontWeight": "bold", "marginBottom": "4px", "color": C_TEXT,
+            }),
+            html.P(f"{len(meals)} meals", style={
+                "color": C_MUTED, "fontSize": "12px", "marginBottom": "14px",
+            }),
+            html.Div(rows),
+        ], style=CARD_STYLE)
+
+    return html.Div([
+        html.H4("Meal plans", style={
+            "fontWeight": "bold", "marginBottom": "6px", "color": C_TEXT,
+        }),
+        html.P(
+            "Full menus from Madservice Roskilde Kommune, parsed directly from the PDF.",
+            style={"color": C_MUTED, "fontSize": "13px", "marginBottom": "20px"}
+        ),
+        *[make_menu_section(title, meals) for title, meals in fetched.items()]
+    ])
+
+def page_nutritional_gaps(patient, pdf_path="sample_data/menuplan-marts-2026.pdf"):
+    """
+    Fetches a full weekly score from the API for the selected patient
+    and displays grade distribution, average nutrients, and grouped clinical flags.
+    """
+    conditions = patient["conditions"]["primary"] + patient["conditions"]["risk"]
+    weekly = api_score_week(pdf_path, conditions, patient["id"])
+ 
+    if not weekly:
+        return page_placeholder(
+            "Nutritional Gaps",
+            "Could not load weekly analysis — make sure the API is running."
+        )
+ 
+    total_meals  = weekly.get("meal_count", 1)
+    grade_counts = weekly.get("grade_counts", {})
+    avg          = weekly.get("avg_nutrients", {})
+    all_flags    = list(dict.fromkeys(weekly.get("all_flags", [])))
+ 
+    # Grade distribution bar
+    grade_bar_items = []
+    for grade in ["A", "B", "C", "D", "E"]:
+        count = grade_counts.get(grade, 0)
+        if count == 0:
+            continue
+        grade_bar_items.append(
+            html.Div(
+                f"{grade} {count}",
+                style={
+                    "flex": str(count),
+                    "backgroundColor": GRADE_COLORS.get(grade, "#888"),
+                    "color": "white",
+                    "fontSize": "11px",
+                    "fontWeight": "bold",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "minWidth": "24px",
+                }
+            )
+        )
+ 
+    # Average nutrient bars
+    avg_rows = [
+        ("Energy",        f"{round(avg.get('energy_kcal', 0))} kcal", avg.get("energy_kcal", 0) / 700),
+        ("Protein",       f"{round(avg.get('protein_g', 0), 1)} g",   avg.get("protein_g", 0) / 25),
+        ("Dietary fibre", f"{round(avg.get('fiber_g', 0), 1)} g",     avg.get("fiber_g", 0) / 8),
+        ("Calcium",       f"{round(avg.get('calcium_mg', 0))} mg",    avg.get("calcium_mg", 0) / 300),
+        ("Sodium",        f"{round(avg.get('sodium_mg', 0) / 1000, 2)} g", min((avg.get("sodium_mg", 0) / 1000) / 5, 1.0)),
+    ]
+ 
+    nutrient_rows = []
+    for label, value_str, ratio in avg_rows:
+        capped = min(ratio, 1.0)
+        color  = C_GREEN if capped >= 0.85 else (C_ORANGE if capped >= 0.6 else C_RED)
+        nutrient_rows.append(html.Div([
+            html.Div([
+                html.Span(label, style={"fontSize": "12px", "fontWeight": "bold", "color": C_TEXT}),
+                html.Span(value_str, style={"fontSize": "11px", "color": C_MUTED, "float": "right"}),
+            ]),
+            html.Div(
+                html.Div(style={
+                    "width": f"{round(capped * 100)}%",
+                    "height": "100%",
+                    "backgroundColor": color,
+                    "borderRadius": "4px",
+                }),
+                style={"backgroundColor": "#ede9e3", "borderRadius": "4px",
+                       "height": "7px", "margin": "5px 0"}
+            ),
+        ], style={"marginBottom": "10px"}))
+ 
+    # Grouped flags with reframed language
+    from collections import Counter
+    flag_summary = Counter()
+    for flag in all_flags:
+        if "Sodium" in flag:
+            flag_summary["Sodium above recommended limit"] += 1
+        elif "exceeds upper limit" in flag:
+            flag_summary["Energy above recommended range"] += 1
+        elif "Energy" in flag and "below" in flag:
+            flag_summary["Energy below recommended range"] += 1
+        elif "Calcium" in flag:
+            flag_summary["Calcium below target"] += 1
+        elif "Protein" in flag:
+            flag_summary["Protein below target"] += 1
+        elif "Fibre" in flag:
+            flag_summary["Fibre below target"] += 1
+        elif "Saturated fat" in flag:
+            flag_summary["Saturated fat above recommended limit"] += 1
+        elif "Sugar" in flag:
+            flag_summary["Sugar above recommended limit"] += 1
+ 
+    flag_items = [
+        html.Div([
+            html.Span(label, style={
+                "fontSize": "12px", "fontWeight": "bold",
+                "color": C_RED, "flex": "1",
+            }),
+            html.Span(
+                f"{count} of {total_meals} meals",
+                style={"fontSize": "11px", "color": C_MUTED}
+            ),
+        ], style={
+            "display": "flex",
+            "justifyContent": "space-between",
+            "alignItems": "center",
+            "backgroundColor": "#fdf0ee",
+            "border": f"1px solid {C_RED}",
+            "borderRadius": "6px",
+            "padding": "8px 12px",
+            "marginBottom": "6px",
+        })
+        for label, count in sorted(flag_summary.items(), key=lambda x: -x[1])
+    ] if flag_summary else [
+        html.P("No nutrient concerns identified this month.", style={
+            "color": C_MUTED, "fontSize": "13px"
+        })
+    ]
+ 
+    return html.Div([
+        html.H4("Nutritional gaps", style={
+            "fontWeight": "bold", "marginBottom": "6px", "color": C_TEXT,
+        }),
+        html.P(
+            f"How well the March 2026 menu meets the nutritional needs of "
+            f"{patient['name']} across all {total_meals} meals. "
+            f"Average grade: {weekly.get('weekly_grade', '---')} - "
+            f"{weekly.get('weekly_description', '')}.",
+            style={"color": C_MUTED, "fontSize": "13px", "marginBottom": "4px"}
+        ),
+        html.P(
+            "Note: flags are raised when a single meal falls outside the ranges "
+            "recommended by NNR 2023. They do not account for snacks, drinks, or "
+            "other meals during the day and are intended as a screening tool for "
+            "care staff, not a verdict on overall diet quality.",
+            style={
+                "color": C_MUTED, "fontSize": "11px",
+                "fontStyle": "italic", "marginBottom": "20px",
+            }
+        ),
+ 
+        # Grade distribution
+        html.Div([
+            html.H5("Grade distribution", style={
+                "fontWeight": "bold", "marginBottom": "10px", "color": C_TEXT,
+            }),
+            html.Div(grade_bar_items, style={
+                "display": "flex",
+                "height": "32px",
+                "borderRadius": "6px",
+                "overflow": "hidden",
+                "marginBottom": "8px",
+            }),
+            html.P(
+                "  .  ".join([
+                    f"{g}: {grade_counts.get(g, 0)}"
+                    for g in ["A", "B", "C", "D", "E"]
+                ]),
+                style={"fontSize": "11px", "color": C_MUTED, "margin": "0"}
+            ),
+        ], style=CARD_STYLE),
+ 
+        # Average nutrients
+        html.Div([
+            html.H5("Average nutrients per meal", style={
+                "fontWeight": "bold", "marginBottom": "14px", "color": C_TEXT,
+            }),
+            html.Div(nutrient_rows),
+        ], style=CARD_STYLE),
+ 
+        # Areas to review
+        html.Div([
+            html.H5("Areas to review", style={
+                "fontWeight": "bold", "marginBottom": "4px", "color": C_TEXT,
+            }),
+            html.P(
+                "Nutrients outside the recommended range in one or more meals. "
+                "Intended as a prompt for dietician review, not a clinical diagnosis.",
+                style={"color": C_MUTED, "fontSize": "11px", "marginBottom": "12px"}
+            ),
+            html.Div(flag_items),
+        ], style=CARD_STYLE),
+    ])
  
  
 def page_placeholder(title, message):
@@ -1053,7 +1358,7 @@ def page_placeholder(title, message):
             })
         ], style={**CARD_STYLE, "textAlign": "center", "padding": "56px 20px"})
     ])
- 
+
  
 # =============================================================================
 # SECTION 6: ADD MEAL MODAL
@@ -1255,10 +1560,10 @@ def render_page(page, patient_id, meal_key, api_score):
         "patients":         page_patients,
         "disease-profiles": page_disease_profiles,
         "data-sources":     page_data_sources,
-        "nutritional-gaps": lambda: page_placeholder("Nutritional Gaps", "Coming soon — will show weekly nutrient gaps across all patients."),
-        "frida-foods":      lambda: page_placeholder("Frida Foods", "Coming soon — browse the Frida 5.5 food database."),
+        "nutritional-gaps": lambda: page_nutritional_gaps(selected_patient), 
+        "frida-foods":      lambda: page_placeholder("Frida Foods", "The Frida 5.5 food composition database contains 1,381 Danish foods used for all nutrient lookups in this system. Ingredient matching and nutrient values are handled by pipeline/frida_matcher.py and pipeline/nutrient_lookup.py. A searchable browser of the full database is planned as a future extension."),
         "settings":         lambda: page_placeholder("Settings", "Reserved for future configuration options."),
-        "meal-plans":       lambda: page_placeholder("Meal Plans", "Coming soon — full meal plan history for each patient.")
+        "meal-plans":       page_meal_plans,
     }
  
     content_fn = page_map.get(page, lambda: page_dashboard(selected_patient, meal_key))
@@ -1441,8 +1746,41 @@ def update_modal_preview(patient_id, meal_key):
             "padding": "12px"
         })
     ])
- 
- 
+
+# --- Callback 5: Auto-score on page load and when patient/meal changes ---
+# This runs whenever the selected patient or meal changes and updates the meal score accordingly from the API.
+
+@app.callback(
+    Output("last-api-score", "data", allow_duplicate=True),
+    Input("selected-patient-id", "data"),
+    Input("selected-meal-key",   "data"),
+    prevent_initial_call='initial_duplicate'
+)
+def auto_score_on_selection(patient_id, meal_key):
+    patient_obj = next((p for p in PATIENTS if p["id"] == patient_id), None)
+    if not patient_obj or not meal_key:
+        return None
+
+    conditions = (
+        patient_obj["conditions"]["primary"] +
+        patient_obj["conditions"]["risk"]
+    )
+
+    pdf_map = {
+        "March 2026": "sample_data/menuplan-marts-2026.pdf",
+        "April 2026": "sample_data/menuplan-april-2026.pdf",
+    }
+    period     = meal_key.split(" - ")[0]
+    pdf_path   = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
+
+    try:
+        day_number = int(meal_key.split("Day")[-1].strip())
+    except (ValueError, IndexError):
+        day_number = 1
+
+    return api_score_meal(pdf_path, day_number, conditions, patient_id)
+
+
 # =============================================================================
 # RUN
 # This block only runs when you execute this file directly.
