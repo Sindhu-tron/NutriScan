@@ -1404,7 +1404,7 @@ def page_nutritional_gaps(patient, pdf_path="sample_data/menuplan-marts-2026.pdf
             "Note: flags are raised when a single meal falls outside the ranges "
             "recommended by NNR 2023. They do not account for snacks, drinks, or "
             "other meals during the day and are intended as a screening tool for "
-            "care staff, not a verdict on overall diet quality.",
+            "care staff, not a verdict on overall diet quality. Sugar flags are primarily driven by dessert ingredients and reflect a known characteristic of traditional Danish institutional menus.",
             style={
                 "color": C_MUTED, "fontSize": "11px",
                 "fontStyle": "italic", "marginBottom": "20px",
