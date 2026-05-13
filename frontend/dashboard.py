@@ -262,8 +262,8 @@ CONDITION_PROFILES = [
         "description": "High blood pressure — affects approx. 2/3 of people over 65",
         "multipliers": [
             ("Sodium", "2.5x penalty", "#d94f3d"),
-            ("Potassium", "1.5x reward", "#4caf7d"),
-            ("Saturated fat", "1.3x penalty", "#e8a838")
+            ("Saturated fat", "1.3x penalty", "#e8a838"),
+            ("Fibre", "1.2x reward", "#4caf7d")
         ]
     },
     {
@@ -271,7 +271,7 @@ CONDITION_PROFILES = [
         "description": "Impaired blood sugar regulation — common in nursing home population",
         "multipliers": [
             ("Sugar", "2.5x penalty", "#d94f3d"),
-            ("Energy", "1.5x penalty", "#e8a838"),
+            ("Energy", "1.3x penalty", "#e8a838"),
             ("Fibre", "1.5x reward", "#4caf7d")
         ]
     },
@@ -332,6 +332,85 @@ GRADE_COLORS = {
     "D": "#c0532a",   # terracotta
     "E": "#a82020",   # deep red
 }
+
+# PDF map — used throughout the dashboard for meal lookups
+PDF_MAP = {
+    "March 2026 — Normal":      "sample_data/menuplan-marts-2026.pdf",
+    "March 2026 — Pescetarisk": "sample_data/pescetarisk-menuplan-vegetarretter-samt-fiskskaldyr.pdf",
+    "April 2026 — Normal":      "sample_data/menuplan-april-2026.pdf",
+    "April 2026 — Pescetarisk": "sample_data/menuplan-april-2026-pescetarisk.pdf",
+}
+
+
+def parse_meal_key(meal_key):
+    """
+    Parses a meal key of the form "March 2026 — Normal|1" into
+    a (pdf_path, day_number) tuple. Falls back gracefully for
+    the old SAMPLE_MEALS format keys like "March 2026 - Day 1".
+    """
+    if "|" in meal_key:
+        period, day_str = meal_key.rsplit("|", 1)
+        pdf_path = PDF_MAP.get(period, "sample_data/menuplan-marts-2026.pdf")
+        try:
+            day_number = int(day_str)
+        except ValueError:
+            day_number = 1
+        return pdf_path, day_number
+
+    # Legacy format fallback for the five hardcoded SAMPLE_MEALS keys
+    legacy_map = {
+        "March 2026": "sample_data/menuplan-marts-2026.pdf",
+        "April 2026": "sample_data/menuplan-april-2026.pdf",
+    }
+    period   = meal_key.split(" - ")[0]
+    pdf_path = legacy_map.get(period, "sample_data/menuplan-marts-2026.pdf")
+    try:
+        day_number = int(meal_key.split("Day")[-1].strip())
+    except (ValueError, IndexError):
+        day_number = 1
+    return pdf_path, day_number
+
+
+def build_meal_dropdown_options():
+    """
+    Fetches all four menus from the API on startup and builds grouped
+    dropdown options. Each option value is "Period|day_number".
+    Falls back to the five hardcoded SAMPLE_MEALS if the API is down.
+    """
+    options = []
+    for period, pdf_path in PDF_MAP.items():
+        try:
+            r = requests.post(
+                f"{API_URL}/menu/parse",
+                json={"pdf_path": pdf_path},
+                timeout=15,
+            )
+            if r.status_code != 200:
+                continue
+            meals = r.json()
+            options.append({
+                "label": f"── {period} ──",
+                "value": f"__header__{period}",
+                "disabled": True,
+            })
+            for meal in meals:
+                day_num = meal.get("day_number", 0)
+                main    = meal.get("main", "")
+                options.append({
+                    "label": f"Day {day_num} — {main}",
+                    "value": f"{period}|{day_num}",
+                })
+        except Exception:
+            continue
+
+    if not options:
+        return [{"label": k, "value": k} for k in SAMPLE_MEALS.keys()]
+
+    return options
+
+
+# Built once at startup — reused by the modal dropdown
+MEAL_DROPDOWN_OPTIONS = build_meal_dropdown_options()
  
  
 # =============================================================================
@@ -430,12 +509,10 @@ def make_sidebar():
         ]),
         ("ANALYSIS", [
             ("nutritional-gaps", "📊  Nutritional gaps"),
-            ("frida-foods",      "🥗  Frida foods"),
             ("disease-profiles", "🏥  Disease profiles"),
         ]),
         ("DATA", [
             ("data-sources",     "📁  Data sources"),
-            ("settings",         "⚙️  Settings"),
         ]),
     ]
  
@@ -845,27 +922,63 @@ def make_conditions_card(patient):
 # =============================================================================
 
 def page_dashboard(patient, meal_key, api_score=None):
-    meal      = SAMPLE_MEALS[meal_key]
-    nutrients = MEAL_NUTRIENTS[meal_key]
     all_conditions = patient["conditions"]["primary"] + patient["conditions"]["risk"]
-    
-    # Use the real API score if we have one, otherwise fall back to local
+
+    # Try to get the meal from SAMPLE_MEALS (old format)
+    # If the key is new format "Period|day", fall back gracefully
+    meal = SAMPLE_MEALS.get(meal_key)
+    nutrients = MEAL_NUTRIENTS.get(meal_key, {})
+
+    # Use the real API score if we have one
     if api_score:
         grade             = api_score["grade"]
         grade_description = api_score["grade_description"]
-        # Use real nutrients from the API response if available
         api_nutrients = api_score.get("nutrients")
         if api_nutrients:
             nutrients = {
-                "energy":  round(api_nutrients.get("energy_kcal", nutrients["energy"]), 0),
-                "protein": round(api_nutrients.get("protein_g",   nutrients["protein"]), 1),
-                "carbs":   nutrients["carbs"],
-                "fibre":   round(api_nutrients.get("fiber_g",     nutrients["fibre"]), 1),
-                "calcium": round(api_nutrients.get("calcium_mg",  nutrients["calcium"]), 0),
+                "energy":  round(api_nutrients.get("energy_kcal", nutrients.get("energy", 0)), 0),
+                "protein": round(api_nutrients.get("protein_g",   nutrients.get("protein", 0)), 1),
+                "carbs":   round(api_nutrients.get("sugar_g", 0) / 0.3, 1),  # reverse the ~30% estimate
+                "fibre":   round(api_nutrients.get("fiber_g",     nutrients.get("fibre", 0)), 1),
+                "calcium": round(api_nutrients.get("calcium_mg",  nutrients.get("calcium", 0)), 0),
                 "sodium":  round(api_nutrients.get("sodium_mg", 0) / 1000, 2),
-        }
+            }
     else:
-        grade, grade_description = calculate_grade(nutrients, all_conditions)
+        if nutrients:
+            grade, grade_description = calculate_grade(nutrients, all_conditions)
+        else:
+            grade, grade_description = "?", "Select a meal to see a score"
+
+    # If no meal in SAMPLE_MEALS, build a minimal display from the meal_key and api_score
+    if not meal:
+        if api_score:
+            main_name = api_score.get("main", meal_key)
+            sides     = api_score.get("sides", [])
+            dessert   = api_score.get("dessert", "")
+            day_name  = api_score.get("day_name", "")
+        else:
+            # Parse what we can from the key
+            if "|" in meal_key:
+                period, day_str = meal_key.rsplit("|", 1)
+                main_name = f"Day {day_str} — {period}"
+            else:
+                main_name = meal_key
+            sides, dessert, day_name = [], "", ""
+
+        meal = {
+            "day": day_name,
+            "main": {"name": main_name, "ingredients": []},
+            "sides": sides,
+            "dessert": {"name": dessert, "ingredients": []},
+        }
+
+    # Ensure nutrients has all keys make_score_cards and make_guidelines expect
+    nutrients.setdefault("energy",  0)
+    nutrients.setdefault("protein", 0)
+    nutrients.setdefault("carbs",   0)
+    nutrients.setdefault("fibre",   0)
+    nutrients.setdefault("calcium", 0)
+    nutrients.setdefault("sodium",  0)
 
     return html.Div([
         make_patient_card(patient),
@@ -1370,51 +1483,89 @@ def page_placeholder(title, message):
 def make_add_meal_modal():
     """
     Builds the modal popup for scoring a meal.
-    The dropdowns are populated with the patient list and meal list from the data above.
+    Four separate dropdowns — one per menu type — replace the single
+    grouped dropdown so it's clearer which menu you're selecting from.
     """
-    # Build dropdown options from the patients list
-    patient_options = []
     patient_options = [
         {"label": f"{p['name']} (#{p['id']})", "value": p["id"]}
         for p in PATIENTS
     ]
- 
-    # Build dropdown options from the meals list
-    meal_options = [
-        {"label": k, "value": k} for k in SAMPLE_MEALS.keys()
-    ]
- 
+
+    # Build options per menu from MEAL_DROPDOWN_OPTIONS
+    # MEAL_DROPDOWN_OPTIONS entries are either headers (disabled) or
+    # "Period|day_number" values — split them by period
+    menus_options = {
+        "March 2026 — Normal":      [],
+        "March 2026 — Pescetarisk": [],
+        "April 2026 — Normal":      [],
+        "April 2026 — Pescetarisk": [],
+    }
+    for opt in MEAL_DROPDOWN_OPTIONS:
+        if opt.get("disabled"):
+            continue
+        value = opt["value"]
+        if "|" in value:
+            period, _ = value.rsplit("|", 1)
+            if period in menus_options:
+                menus_options[period].append(opt)
+
+    # If API was down and we got legacy SAMPLE_MEALS fallback, put them all under March Normal
+    if not any(menus_options.values()):
+        menus_options["March 2026 — Normal"] = MEAL_DROPDOWN_OPTIONS
+
+    menu_labels = {
+        "March 2026 — Normal":      "March 2026 — Normal",
+        "March 2026 — Pescetarisk": "March 2026 — Pescetarisk",
+        "April 2026 — Normal":      "April 2026 — Normal",
+        "April 2026 — Pescetarisk": "April 2026 — Pescetarisk",
+    }
+
+    menu_dropdowns = []
+    for period, options in menus_options.items():
+        dropdown_id = "modal-meal-" + period.lower().replace(" ", "-").replace("—", "").replace("--", "-")
+        menu_dropdowns.append(
+            html.Div([
+                html.Label(menu_labels[period], style={
+                    "fontWeight": "bold",
+                    "fontSize": "12px",
+                    "color": C_MUTED,
+                    "marginBottom": "4px",
+                    "display": "block",
+                }),
+                dcc.Dropdown(
+                    id={"type": "menu-dropdown", "period": period},
+                    options=options,
+                    placeholder=f"Choose a day from {period}...",
+                    style={"marginBottom": "10px"},
+                    maxHeight=300,
+                )
+            ])
+        )
+
     return dbc.Modal([
-        dbc.ModalHeader(dbc.ModalTitle("Score a meal", style={
- "color": C_TEXT
-        })),
+        dbc.ModalHeader(dbc.ModalTitle("Score a meal", style={"color": C_TEXT})),
         dbc.ModalBody([
             html.P(
                 "Pick a patient and a menu day. The system will run the scoring algorithm "
                 "and show you a grade preview before you confirm.",
-                style={"color": C_MUTED, "marginBottom": "18px",
-                       "fontSize": "13px"
-}
+                style={"color": C_MUTED, "marginBottom": "18px", "fontSize": "13px"}
             ),
-            html.Label("Patient", style={
-                "fontWeight": "bold", "marginBottom": "5px"
-            }),
+            html.Label("Patient", style={"fontWeight": "bold", "marginBottom": "5px"}),
             dcc.Dropdown(
                 id="modal-patient-select",
                 options=patient_options,
                 placeholder="Choose a patient...",
-                style={"marginBottom": "14px"
-}
+                style={"marginBottom": "18px"},
+                maxHeight=200,
             ),
-            html.Label("Menu day", style={
-                "fontWeight": "bold", "marginBottom": "5px"
-            }),
+            html.Label("Menu day", style={"fontWeight": "bold", "marginBottom": "10px", "display": "block"}),
+            html.Div(menu_dropdowns),
+            # Hidden single dropdown that callbacks read from — set by the pattern-match callback below
             dcc.Dropdown(
                 id="modal-meal-select",
-                options=meal_options,
-                placeholder="Choose a day...",
-                style={"marginBottom": "14px"
-}
+                options=[],
+                value=None,
+                style={"display": "none"},
             ),
             html.Div(id="modal-preview", style={"marginTop": "14px"})
         ]),
@@ -1551,7 +1702,6 @@ def render_page(page, patient_id, meal_key, api_score):
         "frida-foods":      "Frida Foods",
         "disease-profiles": "Disease Profiles",
         "data-sources":     "Data Sources",
-        "settings":         "Settings"
     }
     title = page_titles.get(page, "NutriScan")
  
@@ -1561,7 +1711,6 @@ def render_page(page, patient_id, meal_key, api_score):
         "disease-profiles": page_disease_profiles,
         "data-sources":     page_data_sources,
         "nutritional-gaps": lambda: page_nutritional_gaps(selected_patient), 
-        "frida-foods":      lambda: page_placeholder("Frida Foods", "The Frida 5.5 food composition database contains 1,381 Danish foods used for all nutrient lookups in this system. Ingredient matching and nutrient values are handled by pipeline/frida_matcher.py and pipeline/nutrient_lookup.py. A searchable browser of the full database is planned as a future extension."),
         "settings":         lambda: page_placeholder("Settings", "Reserved for future configuration options."),
         "meal-plans":       page_meal_plans,
     }
@@ -1577,7 +1726,7 @@ def render_page(page, patient_id, meal_key, api_score):
     Output("current-page", "data"),
     [Input("nav-" + page, "n_clicks") for page in [
         "dashboard", "patients", "meal-plans", "nutritional-gaps",
-        "frida-foods", "disease-profiles", "data-sources", "settings"
+        "disease-profiles", "data-sources"
     ]],
     prevent_initial_call=True
 )
@@ -1627,16 +1776,8 @@ def handle_modal(open_click, cancel_click, score_click,
             patient_obj = next((p for p in PATIENTS if p["id"] == new_patient), None)
             if patient_obj:
                 conditions = patient_obj["conditions"]["primary"] + patient_obj["conditions"]["risk"]
-                pdf_map = {
-                    "March 2026": "sample_data/menuplan-marts-2026.pdf",
-                    "April 2026": "sample_data/menuplan-april-2026.pdf",
-                }
-                period   = new_meal.split(" - ")[0]
-                pdf_path = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
-                try:
-                    day_number = int(new_meal.split("Day")[-1].strip())
-                except (ValueError, IndexError):
-                    day_number = 1
+                pdf_path, day_number = parse_meal_key(new_meal)
+
 
                 api_result = api_score_meal(pdf_path, day_number, conditions, new_patient)
                 return False, new_patient, new_meal, "dashboard", api_result
@@ -1645,6 +1786,44 @@ def handle_modal(open_click, cancel_click, score_click,
 
     return is_open, current_patient, current_meal, "dashboard", None
  
+# --- Callback 3b: Mutually exclusive menu dropdowns ---
+# When the user picks a day from one menu, the other three are cleared so only one meal can be selected at a time.
+@app.callback(
+    Output("modal-meal-select",                                                      "value"),
+    Output({"type": "menu-dropdown", "period": "March 2026 — Normal"},      "value"),
+    Output({"type": "menu-dropdown", "period": "March 2026 — Pescetarisk"}, "value"),
+    Output({"type": "menu-dropdown", "period": "April 2026 — Normal"},      "value"),
+    Output({"type": "menu-dropdown", "period": "April 2026 — Pescetarisk"}, "value"),
+    Input({"type": "menu-dropdown", "period": "March 2026 — Normal"},      "value"),
+    Input({"type": "menu-dropdown", "period": "March 2026 — Pescetarisk"}, "value"),
+    Input({"type": "menu-dropdown", "period": "April 2026 — Normal"},      "value"),
+    Input({"type": "menu-dropdown", "period": "April 2026 — Pescetarisk"}, "value"),
+    prevent_initial_call=True,
+)
+def sync_meal_select(march_normal, march_pesc, april_normal, april_pesc):
+    triggered = ctx.triggered_id
+    if not triggered or not isinstance(triggered, dict):
+        return None, None, None, None, None
+
+    period = triggered.get("period")
+    values = {
+        "March 2026 — Normal":      march_normal,
+        "March 2026 — Pescetarisk": march_pesc,
+        "April 2026 — Normal":      april_normal,
+        "April 2026 — Pescetarisk": april_pesc,
+    }
+
+    selected_value = values.get(period)
+
+    # Return the selected value to modal-meal-select,
+    # keep only the triggered dropdown's value, clear the rest
+    return (
+        selected_value,
+        march_normal  if period == "March 2026 — Normal"      else None,
+        march_pesc    if period == "March 2026 — Pescetarisk" else None,
+        april_normal  if period == "April 2026 — Normal"      else None,
+        april_pesc    if period == "April 2026 — Pescetarisk" else None,
+    )
  
 # --- Callback 4: Live preview in the modal ---
 # This runs whenever the patient or meal dropdown changes in the modal.
@@ -1663,28 +1842,18 @@ def update_modal_preview(patient_id, meal_key):
         )
  
     selected_patient = next((p for p in PATIENTS if p["id"] == patient_id), None)
-    meal      = SAMPLE_MEALS.get(meal_key)
-    nutrients = MEAL_NUTRIENTS.get(meal_key, {})
- 
-    if not selected_patient or not meal:
+    if not selected_patient:
         return None
- 
-    all_conditions = selected_patient["conditions"]["primary"] + selected_patient["conditions"]["risk"]
- 
-    # Try the API first for a real pipeline score; fall back to local scoring.
-    # Work out which PDF and day number to use based on the selected meal key
-    pdf_map = {
-        "March 2026": "sample_data/menuplan-marts-2026.pdf",
-        "April 2026": "sample_data/menuplan-april-2026.pdf",
-    }
-    period = meal_key.split(" - ")[0]
-    pdf_path = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
 
-    try:
-        day_number = int(meal_key.split("Day")[-1].strip())
-    except (ValueError, IndexError):
-        day_number = 1
+    all_conditions = (
+        selected_patient["conditions"]["primary"] +
+        selected_patient["conditions"]["risk"]
+    )
 
+    # Parse the meal key to get pdf_path and day_number
+    pdf_path, day_number = parse_meal_key(meal_key)
+
+    # Try the API first; fall back to local scoring with MEAL_NUTRIENTS if available
     api_result = api_score_meal(
         pdf_path=pdf_path,
         day_number=day_number,
@@ -1698,11 +1867,22 @@ def update_modal_preview(patient_id, meal_key):
         source_label      = "Live score via API"
         source_color      = C_GREEN
     else:
-        grade, grade_description = calculate_grade(nutrients, all_conditions)
+        nutrients = MEAL_NUTRIENTS.get(meal_key, {})
+        if nutrients:
+            grade, grade_description = calculate_grade(nutrients, all_conditions)
+        else:
+            grade, grade_description = "?", "API offline — no local data for this meal"
         source_label = "Local score (API offline)"
         source_color = C_ORANGE
- 
+
     grade_color = GRADE_COLORS.get(grade, "#888")
+
+    # Build a readable meal label from the key
+    if "|" in meal_key:
+        period, day_str = meal_key.rsplit("|", 1)
+        meal_label = f"{period} · Day {day_str}"
+    else:
+        meal_label = meal_key
  
     return html.Div([
         html.Hr(style={"borderColor": C_BORDER}),
@@ -1715,7 +1895,7 @@ def update_modal_preview(patient_id, meal_key):
                 html.P(f"Patient: {selected_patient['name']}",
                        style={"margin": "0", "fontWeight": "bold",
  "color": C_TEXT}),
-                html.P(f"Meal: {meal['main']['name']} + {meal['dessert']['name']}",
+                html.P(f"Meal: {meal_label}",
                        style={"margin": "0", "color": C_MUTED,
                               "fontSize": "12px"
 }),
@@ -1766,19 +1946,25 @@ def auto_score_on_selection(patient_id, meal_key):
         patient_obj["conditions"]["risk"]
     )
 
-    pdf_map = {
-        "March 2026": "sample_data/menuplan-marts-2026.pdf",
-        "April 2026": "sample_data/menuplan-april-2026.pdf",
-    }
-    period     = meal_key.split(" - ")[0]
-    pdf_path   = pdf_map.get(period, "sample_data/menuplan-marts-2026.pdf")
-
-    try:
-        day_number = int(meal_key.split("Day")[-1].strip())
-    except (ValueError, IndexError):
-        day_number = 1
+    pdf_path, day_number = parse_meal_key(meal_key)
 
     return api_score_meal(pdf_path, day_number, conditions, patient_id)
+
+# --- Callback 6: Patient View ---
+# Callback to update the selected patient and current page when a patient is viewed
+
+@app.callback(
+    Output("selected-patient-id", "data", allow_duplicate=True),
+    Output("current-page", "data", allow_duplicate=True),
+    [Input("view-patient-" + p["id"], "n_clicks") for p in PATIENTS],
+    prevent_initial_call=True
+)
+def view_patient_dashboard(*args):
+    triggered = ctx.triggered_id
+    if triggered:
+        patient_id = triggered.replace("view-patient-", "")
+        return patient_id, "dashboard"
+    return PATIENTS[0]["id"], "dashboard"
 
 
 # =============================================================================
@@ -1786,6 +1972,8 @@ def auto_score_on_selection(patient_id, meal_key):
 # This block only runs when you execute this file directly.
 # =============================================================================
 if __name__ == "__main__":
+    import os
+    debug_mode = os.environ.get("NUTRISCAN_NO_DEBUG") != "1"
     print("Starting NutriScan...")
     print("Open http://127.0.0.1:8050 in your browser")
-    app.run(debug=True)
+    app.run(debug=debug_mode)
