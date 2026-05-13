@@ -820,12 +820,12 @@ def make_guidelines(nutrients, conditions):
             alert = "Below target — consider adjusting the meal."
  
         # Condition-specific overrides
-        if key == "sodium"  and "Hypertension"     in conditions and value >= target * 0.9:
-            alert = "⚠ Hypertension: sodium is near the limit. Review immediately."
+        if key == "sodium" and "Hypertension" in conditions and value >= target * 0.9:
+            alert = "⚠ Hypertension: sodium is approaching the recommended limit for this patient."
         if key == "protein" and "Malnutrition Risk" in conditions and pct < 80:
-            alert = "⚠ Malnutrition Risk: protein is low. Consider supplementation."
-        if key == "calcium" and "Osteoporosis"      in conditions and pct < 80:
-            alert = "⚠ Osteoporosis: calcium is insufficient for bone health."
+            alert = "⚠ Malnutrition Risk: protein intake is below target for this patient."
+        if key == "calcium" and "Osteoporosis" in conditions and pct < 80:
+            alert = "⚠ Osteoporosis: calcium intake is below the recommended level for bone health."
  
         rows.append(html.Div([
             html.Div([
@@ -1768,8 +1768,11 @@ def handle_modal(open_click, cancel_click, score_click,
         return False, current_patient, current_meal, "dashboard", None
 
     if triggered == "modal-score":
-        new_patient = selected_patient or current_patient
-        new_meal    = selected_meal    or current_meal
+        if not selected_patient or not selected_meal:
+            # Don't close the modal or update anything if selection is incomplete
+            return True, current_patient, current_meal, "dashboard", None
+        new_patient = selected_patient
+        new_meal    = selected_meal
 
         # Fetch the real score from the API to display on the main dashboard
         if selected_patient and selected_meal:

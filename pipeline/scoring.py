@@ -139,20 +139,24 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
         if nutrient == "sodium_mg":
             flags.append(
                 f"⚠ Sodium {value:.0f} mg exceeds limit ({t['max']} mg). "
-                "Cardiovascular risk — review meal components."
+                "Review sodium-rich components."
             )
         elif nutrient == "fat_sat_g":
             flags.append(
-                f"⚠ Saturated fat {value:.1f} g exceeds limit ({t['max']} g)."
+                f"⚠ Saturated fat {value:.1f} g exceeds limit ({t['max']} g). "
+                "Consider lower-fat alternatives."
             )
         elif nutrient == "sugar_g":
             flags.append(
-                f"⚠ Sugar {value:.1f} g exceeds limit ({t['max']} g)."
+                f"⚠ Sugar {value:.1f} g exceeds limit ({t['max']} g). "
+                "Review dessert and sweetened components."
             )
         elif nutrient == "energy_kcal":
             flags.append(
-                f"⚠ Energy {value:.0f} kcal exceeds upper limit ({t['max']} kcal)."
+                f"⚠ Energy {value:.0f} kcal exceeds recommended range ({t['max']} kcal). "
+                "Review portion sizes."
             )
+
  
     # --- Deficiency penalty (value below min) ---
     if t["min"] is not None and value < t["min"]:
@@ -163,21 +167,22 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
         if nutrient == "protein_g":
             flags.append(
                 f"⚠ Protein {value:.1f} g below minimum ({t['min']} g). "
-                "Risk of muscle loss."
+                "Risk of muscle loss in elderly patients."
             )
         elif nutrient == "fiber_g":
             flags.append(
-                f"⚠ Fibre {value:.1f} g below minimum ({t['min']} g)."
+                f"⚠ Fibre {value:.1f} g below minimum ({t['min']} g). "
+                "Consider adding whole grains or vegetables."
             )
         elif nutrient == "calcium_mg":
             flags.append(
                 f"⚠ Calcium {value:.0f} mg below minimum ({t['min']} mg). "
-                "Bone health risk."
+                "Below recommended level for bone health."
             )
         elif nutrient == "energy_kcal":
             flags.append(
                 f"⚠ Energy {value:.0f} kcal below minimum ({t['min']} kcal). "
-                "Malnutrition risk."
+                "May indicate insufficient portion size."
             )
  
     # --- Reward (value meets or approaches target) ---
