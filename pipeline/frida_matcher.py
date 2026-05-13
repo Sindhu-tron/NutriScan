@@ -42,6 +42,9 @@ MANUAL_OVERRIDES = {
     "bacon":        "Bacon i skiver, rå",
     "ymer":         "Ymer naturel",
     "ladyfinger":   "Kiks, Marie",
+    "creme fraiche": "Creme fraiche 18 %",
+    "lammekød": "Lammekød, kølle, afpudset, rå",
+
 
     # plantefars has no entry in Frida 5.5 — will be flagged and left unmatched
 }
