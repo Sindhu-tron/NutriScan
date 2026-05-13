@@ -73,7 +73,7 @@
     },
     "Æbleflæsk": {
       "ingredients": ["bacon", "æble", "løg", "sukker"],
-      "amounts_g": [120, 150, 60, 10],
+      "amounts_g": [80, 150, 60, 10],
       "kostform": "normalkost"
     },
     "Sprængt kam": {

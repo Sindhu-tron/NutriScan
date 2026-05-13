@@ -1,15 +1,19 @@
 # main.py
 # Entry point for the NutriScan system.
-# Starts both the FastAPI backend and the Dash frontend together so the whole system runs with one command from the project root:
+# Starts both the FastAPI backend and the Dash frontend together
+# so the whole system runs with one command from the project root:
 #
-# run: python main.py
+#     python main.py
 #
-# Terminal output will confirm both servers are running.
+# Always run with the venv Python:
+#     .venv/bin/python main.py
+#
 # Open http://127.0.0.1:8050 in your browser.
 
 import subprocess
 import sys
 import time
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -21,21 +25,36 @@ def main():
     print("=" * 50)
     print()
 
+    # Kill anything already on port 8000 so we get a clean start
+    subprocess.call("lsof -ti :8000 | xargs kill -9 2>/dev/null || true", shell=True)
+
+    # Use the venv Python explicitly to avoid picking up system anaconda
+    venv_python = Path(sys.executable).parent / "python"
+    if not venv_python.exists():
+        venv_python = Path(sys.executable)
+
     # Start the FastAPI backend on port 8000
     print("Starting API server on http://127.0.0.1:8000 ...")
     api_process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "api.main:app", "--port", "8000"],
+        [str(venv_python), "-m", "uvicorn", "api.main:app", "--port", "8000"],
         cwd=PROJECT_ROOT,
     )
 
     # Give the API a moment to start before the dashboard tries to connect
     time.sleep(2)
 
+    # Build the environment for the dashboard subprocess
+    # NUTRISCAN_NO_DEBUG=1 tells dashboard.py to run with debug=False
+    # so Werkzeug doesn't try to attach to a terminal that doesn't exist
+    env = os.environ.copy()
+    env["NUTRISCAN_NO_DEBUG"] = "1"
+
     # Start the Dash frontend on port 8050
     print("Starting dashboard on http://127.0.0.1:8050 ...")
     dashboard_process = subprocess.Popen(
-        [sys.executable, "frontend/dashboard.py"],
+        [str(venv_python), "frontend/dashboard.py"],
         cwd=PROJECT_ROOT,
+        env=env,
     )
 
     print()

@@ -43,7 +43,9 @@ MANUAL_OVERRIDES = {
     "ymer":         "Ymer naturel",
     "ladyfinger":   "Kiks, Marie",
     "creme fraiche": "Creme fraiche 18 %",
-    "lammekød": "Lammekød, kølle, afpudset, rå",
+    "lammekød":      "Lammekød, kølle, afpudset, rå",
+    "sennep":        "Sennep, gul, færdiglavet",
+    "æble":         "Æble, uspec., råt",
 
 
     # plantefars has no entry in Frida 5.5 — will be flagged and left unmatched
