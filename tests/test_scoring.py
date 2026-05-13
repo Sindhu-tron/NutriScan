@@ -132,7 +132,7 @@ def test_multiple_conditions_stack():
     )
 
     assert isinstance(result["score"], float)
-    assert len(result["condition_effects"]) == 2
+    assert len(result["condition_multipliers"]) == 2
 
 
 # 8. Missing nutrients handled as 0

@@ -8,7 +8,7 @@ from pipeline.pdf_extractor import extract_meals
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-PDF_PATH = PROJECT_ROOT / "nutrition_pipeline" / "src" / "sample_data" / "menuplan-marts-2026.pdf"
+PDF_PATH = PROJECT_ROOT / "sample_data" / "menuplan-marts-2026.pdf"
 
 
 # 1. Basic extraction works

@@ -27,7 +27,7 @@ def test_known_food_in_dataset():
     df = load_frida_dataset()
 
     # Pick a known food from Frida (adjust if needed)
-    assert any("banana" in name.lower() for name in df.index)
+    assert any("banan" in name.lower() for name in df.index)
 
 
 # 3. Nutrients return correct structure
