@@ -27,7 +27,22 @@ MANUAL_OVERRIDES = {
     "ris":          "Risengryn, grødris, brune, rå",
     "pasta":        "Pasta, rå",
     "æbler":        "Æble, uspec., råt",
-    "peberfrugt":   "Peberfrugt, rød, rå",
+    "peberfrugt":     "Peberfrugt, rød, rå",
+    "laks":           "Laks, atlantisk, vild, rå",
+    "valnød":        "Valnød, tørret",
+    "gulerod":       "Gulerod, uspec., rå",
+    "tomat":         "Tomat, uspec., rå",
+    "karry":         "Karry, pulver",
+    "kaffe":         "Kaffe, drikkeklar",
+    "yoghurt":      "Yoghurt naturel, sødmælk",
+    "kalvekød":     "Kalvekød, helt magert, råt",
+    "skinke":       "Skinke, kogt, skiveskåret",
+    "kikærter":     "Kikærter, tørrede, rå",
+    "kalkun":       "Kalkun, kød, rå",
+    "bacon":        "Bacon i skiver, rå",
+    "ymer":         "Ymer naturel",
+    "ladyfinger":   "Kiks, Marie",
+
     # plantefars has no entry in Frida 5.5 — will be flagged and left unmatched
 }
 

@@ -6,11 +6,11 @@ Responsibility:
 - Look up nutrients via the meal's already-computed nutrient dict
 - Apply condition-specific multipliers (NNR 2023 + Institutionskost 2025)
 - Return a detailed score: letter grade A-E, flags, per-nutrient breakdown
-
+ 
 Nutrient thresholds are based on:
     Nordic Nutrition Recommendations 2023 (NNR 2023)
     Anbefalinger for den danske institutionskost 2025
-
+ 
 Per-meal targets assume 3 main meals/day for an elderly person (~1800-2200 kcal/day):
     Energy:    600-750 kcal
     Protein:   20-30 g     (NNR: 1.2-1.4 g/kg/day for elderly)
@@ -18,40 +18,40 @@ Per-meal targets assume 3 main meals/day for an elderly person (~1800-2200 kcal/
     Calcium:   250-350 mg  (NNR: 800-1000 mg/day)
     Sodium:    <600 mg     (NNR: <5 g salt/day = <2000 mg sodium)
     Sat fat:   <8 g        (NNR: <10% of energy from saturated fat)
-
+ 
 Note on sodium: nutrient_lookup.py stores sodium in mg (as Frida does).
 All sodium thresholds in this module are therefore in mg.
-
+ 
 Usage:
     from pipeline.scoring import score_meal, score_week
-
+ 
     result = score_meal(enriched_meal, conditions=["Hypertension", "Osteoporosis"])
     weekly = score_week(list_of_results)
-
+ 
 Run directly to test:
     python pipeline/scoring.py
 """
-
+ 
 from typing import Dict, List
-
-
+ 
+ 
 # ---------------------------------------------------------------------------
 # Per-meal nutrient targets (NNR 2023 + Institutionskost 2025)
 # min:    below this is a deficiency penalty
 # target: reaching this gives a full reward
 # max:    above this is an excess penalty
 # ---------------------------------------------------------------------------
-
+ 
 TARGETS = {
-    "energy_kcal": {"min": 550,   "target": 680,  "max": 800,   "unit": "kcal"},
+    "energy_kcal": {"min": 500,   "target": 680,  "max": 900,   "unit": "kcal"},
     "protein_g":   {"min": 20,    "target": 25,   "max": None,  "unit": "g"},
     "fiber_g":     {"min": 5,     "target": 8,    "max": None,  "unit": "g"},
     "calcium_mg":  {"min": 200,   "target": 300,  "max": None,  "unit": "mg"},
-    "sodium_mg":   {"min": None,  "target": 500,  "max": 650,   "unit": "mg"},
+    "sodium_mg":   {"min": None,  "target": 400,  "max": 600,   "unit": "mg"},
     "fat_sat_g":   {"min": None,  "target": 6.0,  "max": 8.0,   "unit": "g"},
     "sugar_g":     {"min": None,  "target": 10,   "max": 20,    "unit": "g"},
 }
-
+ 
 # ---------------------------------------------------------------------------
 # Condition multipliers
 # Format: condition -> {nutrient: (direction, multiplier)}
@@ -59,7 +59,7 @@ TARGETS = {
 #                "reward"  = good nutrient gets rewarded more
 #   multiplier:  stacks multiplicatively across multiple conditions
 # ---------------------------------------------------------------------------
-
+ 
 CONDITION_MULTIPLIERS = {
     "Hypertension": {
         "sodium_mg":  ("penalty", 2.5),
@@ -84,11 +84,11 @@ CONDITION_MULTIPLIERS = {
         "fiber_g":    ("reward",  1.5),
     },
 }
-
+ 
 # ---------------------------------------------------------------------------
 # Grade thresholds  (lower score = better)
 # ---------------------------------------------------------------------------
-
+ 
 GRADE_THRESHOLDS = [
     ("A", float("-inf"), -2,   "Excellent nutritional balance"),
     ("B", -2,             2,   "Good — minor improvements possible"),
@@ -96,12 +96,12 @@ GRADE_THRESHOLDS = [
     ("D",  7,             13,  "Poor — action recommended"),
     ("E",  13, float("inf"),   "Critical — immediate review needed"),
 ]
-
-
+ 
+ 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
+ 
 def _get_multipliers(nutrient: str, conditions: List[str]):
     """Returns combined penalty and reward multipliers for a nutrient."""
     penalty_mult = 1.0
@@ -115,12 +115,12 @@ def _get_multipliers(nutrient: str, conditions: List[str]):
             else:
                 reward_mult *= mult
     return penalty_mult, reward_mult
-
-
+ 
+ 
 def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
     """
     Calculates the score contribution for one nutrient.
-
+ 
     Returns:
         contribution (float): negative = good (reward), positive = bad (penalty)
         flags (list[str]):    clinical alert messages for this nutrient
@@ -129,13 +129,13 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
     penalty_mult, reward_mult = _get_multipliers(nutrient, conditions)
     contribution = 0.0
     flags = []
-
+ 
     # --- Excess penalty (value above max) ---
     if t["max"] is not None and value > t["max"]:
         overage = value - t["max"]
         base = (overage / t["max"]) * 5
-        contribution += base * penalty_mult
-
+        contribution += min(base * penalty_mult, 8.0)  # cap so no single nutrient dominates
+ 
         if nutrient == "sodium_mg":
             flags.append(
                 f"⚠ Sodium {value:.0f} mg exceeds limit ({t['max']} mg). "
@@ -153,13 +153,13 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
             flags.append(
                 f"⚠ Energy {value:.0f} kcal exceeds upper limit ({t['max']} kcal)."
             )
-
+ 
     # --- Deficiency penalty (value below min) ---
     if t["min"] is not None and value < t["min"]:
         shortfall = t["min"] - value
         base = (shortfall / t["min"]) * 3
         contribution += base * penalty_mult
-
+ 
         if nutrient == "protein_g":
             flags.append(
                 f"⚠ Protein {value:.1f} g below minimum ({t['min']} g). "
@@ -179,7 +179,7 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
                 f"⚠ Energy {value:.0f} kcal below minimum ({t['min']} kcal). "
                 "Malnutrition risk."
             )
-
+ 
     # --- Reward (value meets or approaches target) ---
     if t["min"] is not None and value >= t["min"]:
         if value >= t["target"]:
@@ -188,26 +188,26 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
             ratio = (value - t["min"]) / max(t["target"] - t["min"], 0.001)
             base = 1.0 * ratio
         contribution -= base * reward_mult
-
+ 
     return round(contribution, 3), flags
-
-
+ 
+ 
 def _score_to_grade(score: float):
     """Maps a numeric score to a letter grade and description."""
     for grade, low, high, desc in GRADE_THRESHOLDS:
         if low <= score < high:
             return grade, desc
     return "E", "Critical — immediate review needed"
-
-
+ 
+ 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
+ 
 def score_meal(meal_or_nutrients, conditions: List[str]) -> Dict:
     """
     Scores a meal for a patient with the given health conditions.
-
+ 
     Args:
         meal_or_nutrients:
             Either a fully enriched meal dict (from pdf_extractor.extract_meals)
@@ -215,7 +215,7 @@ def score_meal(meal_or_nutrients, conditions: List[str]) -> Dict:
         conditions:
             List of condition name strings, e.g. ["Hypertension", "Osteoporosis"].
             Must match keys in CONDITION_MULTIPLIERS.
-
+ 
     Returns dict with:
         score (float):           raw numeric score — lower is better
         grade (str):             letter grade A-E
@@ -231,20 +231,20 @@ def score_meal(meal_or_nutrients, conditions: List[str]) -> Dict:
         nutrients = meal_or_nutrients["nutrients"]
     else:
         nutrients = meal_or_nutrients
-
+ 
     total_score = 0.0
     all_flags = []
     nutrient_scores = {}
-
+ 
     for nutrient in TARGETS:
         value = float(nutrients.get(nutrient, 0.0))
         contribution, flags = _score_nutrient(nutrient, value, conditions)
         total_score += contribution
         nutrient_scores[nutrient] = contribution
         all_flags.extend(flags)
-
+ 
     grade, grade_description = _score_to_grade(total_score)
-
+ 
     # Record which conditions affected which nutrients
     condition_effects = []
     for cond in conditions:
@@ -253,7 +253,7 @@ def score_meal(meal_or_nutrients, conditions: List[str]) -> Dict:
                 "condition": cond,
                 "affects":   list(CONDITION_MULTIPLIERS[cond].keys()),
             })
-
+ 
     return {
         "score":             round(total_score, 2),
         "grade":             grade,
@@ -264,15 +264,15 @@ def score_meal(meal_or_nutrients, conditions: List[str]) -> Dict:
         "nutrients":         nutrients,
         "conditions":        conditions,
     }
-
-
+ 
+ 
 def score_week(meal_results: List[Dict]) -> Dict:
     """
     Calculates a weekly summary from a list of score_meal() results.
-
+ 
     Args:
         meal_results: list of dicts as returned by score_meal()
-
+ 
     Returns dict with:
         weekly_avg_score (float)
         weekly_grade (str)
@@ -286,21 +286,21 @@ def score_week(meal_results: List[Dict]) -> Dict:
     """
     if not meal_results:
         return {}
-
+ 
     scores = [r["score"] for r in meal_results]
     avg_score = round(sum(scores) / len(scores), 2)
     grade, desc = _score_to_grade(avg_score)
-
+ 
     grade_counts = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0}
     for r in meal_results:
         grade_counts[r["grade"]] += 1
-
+ 
     nutrient_keys = list(TARGETS.keys())
     avg_nutrients = {}
     for key in nutrient_keys:
         values = [float(r["nutrients"].get(key, 0)) for r in meal_results]
         avg_nutrients[key] = round(sum(values) / len(values), 2)
-
+ 
     # Deduplicated flags
     seen = set()
     all_flags = []
@@ -309,7 +309,7 @@ def score_week(meal_results: List[Dict]) -> Dict:
             if flag not in seen:
                 seen.add(flag)
                 all_flags.append(flag)
-
+ 
     return {
         "weekly_avg_score":  avg_score,
         "weekly_grade":      grade,
@@ -321,16 +321,16 @@ def score_week(meal_results: List[Dict]) -> Dict:
         "all_flags":         all_flags,
         "meal_count":        len(meal_results),
     }
-
-
+ 
+ 
 # ---------------------------------------------------------------------------
 # Run directly to test
 # ---------------------------------------------------------------------------
-
+ 
 if __name__ == "__main__":
     print("Testing scoring.py")
     print("=" * 55)
-
+ 
     # These nutrient keys match what nutrient_lookup.py returns
     test_cases = [
         {
@@ -361,7 +361,7 @@ if __name__ == "__main__":
             "conditions": [],
         },
     ]
-
+ 
     results = []
     for tc in test_cases:
         result = score_meal(tc["nutrients"], tc["conditions"])
@@ -374,7 +374,7 @@ if __name__ == "__main__":
                 print(f"  {flag}")
         else:
             print("  No flags.")
-
+ 
     print("\n" + "=" * 55)
     print("Weekly summary (all 3 meals)")
     weekly = score_week(results)
