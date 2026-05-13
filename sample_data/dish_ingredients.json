@@ -72,8 +72,8 @@
       "kostform": "normalkost"
     },
     "Æbleflæsk": {
-      "ingredients": ["bacon", "æble", "løg", "sukker"],
-      "amounts_g": [80, 150, 60, 10],
+      "ingredients": ["svinekød", "æble", "løg", "sukker"],
+      "amounts_g": [80, 80, 60, 5],
       "kostform": "normalkost"
     },
     "Sprængt kam": {
@@ -347,7 +347,7 @@
     },
     "Indisk curry": {
       "ingredients": ["kylling", "løg", "karry", "tomat", "fløde", "ris"],
-      "amounts_g": [120, 60, 10, 80, 50, 100],
+      "amounts_g": [120, 60, 10, 80, 25, 100],
       "kostform": "normalkost"
     },
     "Grøntsagsbiksemad": {
@@ -539,7 +539,7 @@
     },
     "Hindbærdessert": {
       "ingredients": ["hindbær", "fløde", "sukker"],
-      "amounts_g": [100, 80, 20],
+      "amounts_g": [100, 30, 8],
       "kostform": "normalkost"
     },
     "Panna cotta": {
@@ -584,7 +584,7 @@
     },
     "Cheesecake i glas": {
       "ingredients": ["flødeost", "fløde", "sukker", "digestive"],
-      "amounts_g": [100, 60, 30, 30],
+      "amounts_g": [30, 15, 8, 15],
       "kostform": "normalkost"
     },
     "Æblegrød": {
@@ -594,7 +594,7 @@
     },
     "Kirsebærmousse": {
       "ingredients": ["kirsebær", "fløde", "sukker", "æg"],
-      "amounts_g": [100, 80, 20, 50],
+      "amounts_g": [100, 30, 8, 25],
       "kostform": "normalkost"
     },
     "Blommegrød": {
@@ -679,7 +679,7 @@
     },
     "Is": {
       "ingredients": ["fløde", "sukker", "vanilje", "æg"],
-      "amounts_g": [100, 40, 2, 50],
+      "amounts_g": [30, 15, 2, 20],
       "kostform": "normalkost"
     },
     "Vafler": {

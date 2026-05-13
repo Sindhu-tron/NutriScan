@@ -46,7 +46,13 @@ MANUAL_OVERRIDES = {
     "lammekød":      "Lammekød, kølle, afpudset, rå",
     "sennep":        "Sennep, gul, færdiglavet",
     "æble":         "Æble, uspec., råt",
-
+    "cremefraiche":             "Creme fraiche 18 %",
+    "kylling":                  "Kylling, kød, rå",
+    "gulerødder":               "Gulerod, uspec., rå",
+    "surt":                     "Agurk, syltet",
+    "nannbrød":                 "Hvedebrød, pitabrød, fint",
+    "nannbrød med nigellafrø":  "Hvedebrød, pitabrød, fint",
+    "stuvet ærter":             "Grønne ærter, konserves",
 
     # plantefars has no entry in Frida 5.5 — will be flagged and left unmatched
 }

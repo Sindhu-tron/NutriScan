@@ -254,6 +254,14 @@ def _enrich_meal(meal, dish_db):
             "råkost":        60,
             "dild":          5,
             "persille":      5,
+            "surt":                    40,
+            "nannbrød":                60,
+            "nannbrød med nigellafrø": 60,
+            "stuvet ærter":            80,
+            "gulerødder":              80,
+            "stuvet bønner":           80,
+            "rødbeder":                60,
+            "champignon":              60,
             }
         side_amounts = [SIDE_PORTIONS.get(s.strip().lower(), 80) for s in sides]
         result = _lookup_component("sides", sides, side_amounts)

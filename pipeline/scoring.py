@@ -43,13 +43,13 @@ from typing import Dict, List
 # ---------------------------------------------------------------------------
  
 TARGETS = {
-    "energy_kcal": {"min": 500,   "target": 680,  "max": 900,   "unit": "kcal"},
+    "energy_kcal": {"min": 500,   "target": 700,  "max": 1000,  "unit": "kcal"},
     "protein_g":   {"min": 20,    "target": 25,   "max": None,  "unit": "g"},
     "fiber_g":     {"min": 5,     "target": 8,    "max": None,  "unit": "g"},
     "calcium_mg":  {"min": 200,   "target": 300,  "max": None,  "unit": "mg"},
-    "sodium_mg":   {"min": None,  "target": 400,  "max": 600,   "unit": "mg"},
-    "fat_sat_g":   {"min": None,  "target": 6.0,  "max": 8.0,   "unit": "g"},
-    "sugar_g":     {"min": None,  "target": 10,   "max": 20,    "unit": "g"},
+    "sodium_mg":   {"min": None,  "target": 500,  "max": 750,   "unit": "mg"},
+    "fat_sat_g":   {"min": None,  "target": 8.0,  "max": 12.0,  "unit": "g"},
+    "sugar_g":     {"min": None,  "target": 12,   "max": 25,    "unit": "g"},
 }
  
 # ---------------------------------------------------------------------------
