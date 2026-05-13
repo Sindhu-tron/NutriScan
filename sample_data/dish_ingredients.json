@@ -13,27 +13,27 @@
     },
     "Frikadeller": {
       "ingredients": ["svinekød", "løg", "æg", "mælk", "hvedemel", "rasp", "smør", "salt", "sort peber", "muskatnød"],
-      "amounts_g": [120, 40, 50, 50, 20, 20, 10, 2, 1, 1],
+      "amounts_g": [120, 40, 50, 50, 20, 20, 10, 1, 1, 1],
       "kostform": "normalkost"
     },
     "Hakkebøf": {
       "ingredients": ["oksekød", "løg", "smør", "salt", "sort peber"],
-      "amounts_g": [150, 60, 10, 2, 1],
+      "amounts_g": [150, 60, 10, 1, 1],
       "kostform": "normalkost"
     },
     "Flæskesteg": {
       "ingredients": ["svinekød", "salt"],
-      "amounts_g": [180, 3, 1],
+      "amounts_g": [180, 1],
       "kostform": "normalkost"
     },
     "Stegt kylling": {
       "ingredients": ["kylling", "smør", "salt", "sort peber"],
-      "amounts_g": [150, 10, 2, 1],
+      "amounts_g": [150, 10, 1, 1],
       "kostform": "normalkost"
     },
     "Kylling": {
       "ingredients": ["kylling", "smør", "salt", "sort peber"],
-      "amounts_g": [150, 10, 2, 1],
+      "amounts_g": [150, 10, 1, 1],
       "kostform": "normalkost"
     },
     "Forloren hare": {
@@ -48,27 +48,27 @@
     },
     "Paneret kotelet": {
       "ingredients": ["svinekød", "rasp", "æg", "smør", "salt"],
-      "amounts_g": [150, 30, 50, 10, 2],
+      "amounts_g": [150, 30, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Brunkål": {
       "ingredients": ["hvidkål", "svinekød", "smør", "sukker", "salt"],
-      "amounts_g": [200, 120, 10, 10, 2],
+      "amounts_g": [200, 120, 10, 10, 1],
       "kostform": "normalkost"
     },
     "Mørbrad med bacon": {
       "ingredients": ["svinekød", "bacon", "smør", "fløde", "salt"],
-      "amounts_g": [150, 40, 10, 50, 2],
+      "amounts_g": [150, 40, 10, 50, 1],
       "kostform": "normalkost"
     },
     "Medister": {
       "ingredients": ["svinekød", "løg", "salt", "sort peber", "muskatnød"],
-      "amounts_g": [150, 30, 2, 1, 1],
+      "amounts_g": [150, 30, 1, 1, 1],
       "kostform": "normalkost"
     },
     "Grøntsagsfrikadeller": {
       "ingredients": ["gulerod", "løg", "æg", "hvedemel", "rasp", "smør", "salt"],
-      "amounts_g": [100, 40, 50, 20, 20, 10, 2],
+      "amounts_g": [100, 40, 50, 20, 20, 10, 1],
       "kostform": "normalkost"
     },
     "Æbleflæsk": {
@@ -78,17 +78,17 @@
     },
     "Sprængt kam": {
       "ingredients": ["svinekød", "salt"],
-      "amounts_g": [180, 5, 1],
+      "amounts_g": [180, 1],
       "kostform": "normalkost"
     },
     "Revelsesben": {
       "ingredients": ["svinekød", "salt", "sort peber"],
-      "amounts_g": [200, 3, 1],
+      "amounts_g": [200, 1, 1],
       "kostform": "normalkost"
     },
     "Kalkunschnitzel": {
       "ingredients": ["kalkun", "rasp", "æg", "smør", "salt"],
-      "amounts_g": [150, 30, 50, 10, 2],
+      "amounts_g": [150, 30, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Enebærgryde": {
@@ -98,17 +98,17 @@
     },
     "Rullesteg": {
       "ingredients": ["svinekød", "svesker", "salt", "sort peber"],
-      "amounts_g": [180, 50, 3, 1],
+      "amounts_g": [180, 50, 1, 1],
       "kostform": "normalkost"
     },
     "Pølser": {
       "ingredients": ["svinekød", "salt", "sort peber"],
-      "amounts_g": [150, 3, 1],
+      "amounts_g": [150, 1, 1],
       "kostform": "normalkost"
     },
     "Kalvehjerter": {
       "ingredients": ["kalvekød", "løg", "smør", "fløde", "salt"],
-      "amounts_g": [150, 60, 10, 50, 2],
+      "amounts_g": [150, 60, 10, 50, 1],
       "kostform": "normalkost"
     },
     "Skinkefarsbrød": {
@@ -118,17 +118,17 @@
     },
     "Paneret krebinet": {
       "ingredients": ["svinekød", "rasp", "æg", "smør", "salt"],
-      "amounts_g": [150, 30, 50, 10, 2],
+      "amounts_g": [150, 30, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Nakkesteg": {
       "ingredients": ["svinekød", "salt", "sort peber"],
-      "amounts_g": [200, 3, 1, 1],
+      "amounts_g": [200, 1, 1],
       "kostform": "normalkost"
     },
     "Hjemmerøget laks": {
       "ingredients": ["laks", "salt", "sukker", "dild"],
-      "amounts_g": [150, 5, 5, 5],
+      "amounts_g": [150, 1, 5, 5],
       "kostform": "normalkost"
     },
     "Kalkungryde": {
@@ -138,12 +138,12 @@
     },
     "Hamburgerryg": {
       "ingredients": ["svinekød", "salt"],
-      "amounts_g": [180, 3],
+      "amounts_g": [180, 1],
       "kostform": "normalkost"
     },
     "Mørbrad á la créme": {
       "ingredients": ["svinekød", "fløde", "løg", "smør", "salt"],
-      "amounts_g": [150, 60, 50, 10, 2],
+      "amounts_g": [150, 60, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Coq au vin": {
@@ -153,12 +153,12 @@
     },
     "Lammesteg": {
       "ingredients": ["lammekød", "hvidløg", "smør", "salt"],
-      "amounts_g": [180, 5, 3, 10, 2],
+      "amounts_g": [180, 5, 10, 1],
       "kostform": "normalkost"
     },
     "Stegt kalvelever": {
       "ingredients": ["kalvekød", "løg", "smør", "bacon", "salt"],
-      "amounts_g": [150, 60, 10, 40, 2],
+      "amounts_g": [150, 60, 10, 40, 1],
       "kostform": "normalkost"
     },
     "Braiseret svinekæbe": {
@@ -168,12 +168,12 @@
     },
     "Porchetta": {
       "ingredients": ["svinekød", "hvidløg", "salt", "sort peber"],
-      "amounts_g": [180, 3, 5, 3, 1],
+      "amounts_g": [180, 5, 1, 1],
       "kostform": "normalkost"
     },
     "Farseret kalkunbryst": {
       "ingredients": ["kalkun", "spinat", "ost", "æg", "salt"],
-      "amounts_g": [180, 60, 30, 50, 2],
+      "amounts_g": [180, 60, 30, 50, 1],
       "kostform": "normalkost"
     },
     "Mørbradgryde": {
@@ -183,7 +183,7 @@
     },
     "Krebinet": {
       "ingredients": ["svinekød", "rasp", "æg", "smør", "salt"],
-      "amounts_g": [150, 30, 50, 10, 2],
+      "amounts_g": [150, 30, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Farsbrød": {
@@ -193,22 +193,22 @@
     },
     "Kogt kylling": {
       "ingredients": ["kylling", "løg", "gulerod", "salt"],
-      "amounts_g": [180, 60, 80, 3, 1],
+      "amounts_g": [180, 60, 80, 1],
       "kostform": "normalkost"
     },
     "Bankekød": {
       "ingredients": ["oksekød", "løg", "gulerod", "smør", "salt"],
-      "amounts_g": [180, 60, 80, 10, 2],
+      "amounts_g": [180, 60, 80, 10, 1],
       "kostform": "normalkost"
     },
     "Sprængt nakke": {
       "ingredients": ["svinekød", "salt"],
-      "amounts_g": [180, 5, 1],
+      "amounts_g": [180, 1],
       "kostform": "normalkost"
     },
     "Forloren and": {
       "ingredients": ["svinekød", "svesker", "æble", "smør", "salt"],
-      "amounts_g": [180, 50, 100, 10, 2],
+      "amounts_g": [180, 50, 100, 10, 1],
       "kostform": "normalkost"
     },
     "Kyllingefrikadeller": {
@@ -218,7 +218,7 @@
     },
     "Biksemad": {
       "ingredients": ["svinekød", "kartoffel", "løg", "smør", "salt"],
-      "amounts_g": [100, 150, 60, 10, 2],
+      "amounts_g": [100, 150, 60, 10, 1],
       "kostform": "normalkost"
     },
     "Gartnerens gryde": {
@@ -235,12 +235,12 @@
   "fish": {
     "Fiskefrikadeller": {
       "ingredients": ["torskefilet", "æg", "mælk", "hvedemel", "løg", "smør", "salt", "sort peber"],
-      "amounts_g": [120, 50, 50, 20, 40, 10, 2, 1],
+      "amounts_g": [120, 50, 50, 20, 40, 10, 1, 1],
       "kostform": "normalkost"
     },
     "Stegt fisk": {
       "ingredients": ["fiskefilet", "smør", "citron", "salt"],
-      "amounts_g": [140, 10, 20, 2],
+      "amounts_g": [140, 10, 20, 1],
       "kostform": "normalkost"
     },
     "Fiskelasagne": {
@@ -250,7 +250,7 @@
     },
     "Bagt torsk": {
       "ingredients": ["torsk", "smør", "citron", "salt"],
-      "amounts_g": [140, 10, 20, 2],
+      "amounts_g": [140, 10, 20, 1],
       "kostform": "normalkost"
     },
     "Fisk florentine": {
@@ -302,7 +302,7 @@
     },
     "Kartoffeltimbale": {
       "ingredients": ["kartoffel", "æg", "fløde", "smør", "salt"],
-      "amounts_g": [200, 50, 50, 10, 2],
+      "amounts_g": [200, 50, 50, 10, 1],
       "kostform": "vegetar"
     },
     "Vegetarisk farsrulle": {
@@ -322,7 +322,7 @@
     },
     "Kartoffelgratin": {
       "ingredients": ["kartoffel", "fløde", "ost", "hvidløg", "salt"],
-      "amounts_g": [250, 80, 40, 5, 2],
+      "amounts_g": [200, 60, 25, 5, 1],
       "kostform": "vegetar"
     },
     "Grøntsagskrebinet": {
@@ -372,7 +372,7 @@
     },
     "Vegetarpølser": {
       "ingredients": ["plantefars", "salt", "krydderier"],
-      "amounts_g": [150, 2, 5],
+      "amounts_g": [150, 1, 5],
       "kostform": "vegetar"
     },
     "Rødbedebøf": {
@@ -397,7 +397,7 @@
     },
     "Gulerodssuppe": {
       "ingredients": ["gulerod", "løg", "smør", "fløde", "salt"],
-      "amounts_g": [250, 60, 10, 50, 2],
+      "amounts_g": [250, 60, 10, 50, 1],
       "kostform": "vegetar"
     },
     "Spinatpinde": {
@@ -427,7 +427,7 @@
     },
     "Gratin/sød kartoffel": {
       "ingredients": ["sød kartoffel", "fløde", "ost", "hvidløg", "salt"],
-      "amounts_g": [250, 80, 40, 5, 2],
+      "amounts_g": [250, 80, 40, 5, 1],
       "kostform": "vegetar"
     },
     "Chunksgryde": {
@@ -544,7 +544,7 @@
     },
     "Panna cotta": {
       "ingredients": ["fløde", "sukker", "vanilje"],
-      "amounts_g": [150, 30, 2, 3],
+      "amounts_g": [150, 30, 2],
       "kostform": "normalkost"
     },
     "Cocktailfromage": {
