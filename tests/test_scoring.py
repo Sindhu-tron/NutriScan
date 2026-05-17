@@ -132,7 +132,7 @@ def test_multiple_conditions_stack():
     )
 
     assert isinstance(result["score"], float)
-    assert len(result["condition_multipliers"]) == 2
+    assert len(result["condition_effects"]) == 2
 
 
 # 8. Missing nutrients handled as 0
@@ -191,3 +191,82 @@ def test_score_week_summary():
     assert "weekly_grade" in weekly
     assert "grade_counts" in weekly
     assert weekly["meal_count"] == 2
+
+
+# 11. Saturated fat penalty cap at 8.0g
+def test_saturated_fat_penalty_cap():
+    nutrients_at_cap = {
+        "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
+        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 8.0, "sugar_g": 8,
+    }
+    nutrients_over_cap = {
+        "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
+        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 12.0, "sugar_g": 8,
+    }
+
+    result_at_cap   = score_meal(nutrients_at_cap, [])
+    result_over_cap = score_meal(nutrients_over_cap, [])
+
+    # Over the cap should score worse
+    assert result_over_cap["score"] > result_at_cap["score"]
+    # Over the cap should raise a saturated fat flag
+    assert any("Saturated fat" in flag for flag in result_over_cap["flags"])
+    # At the cap should not raise a flag
+    assert not any("Saturated fat" in flag for flag in result_at_cap["flags"])
+
+
+# 12. Grade boundary values
+def test_grade_A_boundary():
+    # Score below -2 should be A
+    nutrients = {
+        "energy_kcal": 680, "protein_g": 35, "fiber_g": 10,
+        "calcium_mg": 400, "sodium_mg": 400, "fat_sat_g": 5, "sugar_g": 6,
+    }
+    result = score_meal(nutrients, [])
+    assert result["grade"] == "A"
+
+
+def test_grade_E_boundary():
+    # Score above 13 should be E
+    nutrients = {
+        "energy_kcal": 200, "protein_g": 2, "fiber_g": 0,
+        "calcium_mg": 0, "sodium_mg": 5000, "fat_sat_g": 25, "sugar_g": 100,
+    }
+    result = score_meal(nutrients, [])
+    assert result["grade"] == "E"
+
+
+def test_grade_C_boundary():
+    # Adequate meal should land in middle range
+    nutrients = {
+        "energy_kcal": 620, "protein_g": 22, "fiber_g": 6,
+        "calcium_mg": 220, "sodium_mg": 580, "fat_sat_g": 7.5, "sugar_g": 15,
+    }
+    result = score_meal(nutrients, [])
+    assert result["grade"] in ["B", "C", "D"]
+
+
+# 13. Malnutrition Risk rewards protein and energy
+def test_malnutrition_risk_rewards_protein():
+    nutrients = {
+        "energy_kcal": 650, "protein_g": 35, "fiber_g": 8,
+        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 6, "sugar_g": 8,
+    }
+    result_no_condition   = score_meal(nutrients, [])
+    result_with_condition = score_meal(nutrients, ["Malnutrition Risk"])
+
+    # Malnutrition Risk rewards protein so score should improve
+    assert result_with_condition["score"] < result_no_condition["score"]
+
+
+# 14. High Cholesterol penalises saturated fat
+def test_high_cholesterol_penalises_sat_fat():
+    nutrients = {
+        "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
+        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 10.0, "sugar_g": 8,
+    }
+    result_no_condition   = score_meal(nutrients, [])
+    result_with_condition = score_meal(nutrients, ["High Cholesterol"])
+
+    # High Cholesterol doubles the sat fat penalty
+    assert result_with_condition["score"] > result_no_condition["score"]
