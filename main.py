@@ -78,3 +78,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# If Port 8050 is already in use
+# kill -9 $(lsof -ti :8000) 2>/dev/null
+# kill -9 $(lsof -ti :8050) 2>/dev/null
+# sleep 2
+# .venv/bin/python main.py

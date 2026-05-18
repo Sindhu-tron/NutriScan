@@ -236,32 +236,32 @@
     "Fiskefrikadeller": {
       "ingredients": ["torskefilet", "æg", "mælk", "hvedemel", "løg", "smør", "salt", "sort peber"],
       "amounts_g": [120, 50, 50, 20, 40, 10, 0.5, 1],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     },
     "Stegt fisk": {
       "ingredients": ["fiskefilet", "smør", "citron", "salt"],
       "amounts_g": [140, 10, 20, 0.5],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     },
     "Fiskelasagne": {
       "ingredients": ["torsk", "pasta", "fløde", "ost"],
       "amounts_g": [120, 80, 40, 20],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     },
     "Bagt torsk": {
       "ingredients": ["torsk", "smør", "citron", "salt"],
       "amounts_g": [140, 10, 20, 0.5],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     },
     "Fisk florentine": {
       "ingredients": ["fisk", "spinat", "fløde", "ost"],
       "amounts_g": [120, 80, 35, 30],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     },
     "Gratineret mørksej": {
       "ingredients": ["fisk", "ost", "fløde", "løg", "smør"],
       "amounts_g": [150, 40, 35, 40, 10],
-      "kostform": "normalkost"
+      "kostform": "pescetarian"
     }
   },
   "vegetarian": {
