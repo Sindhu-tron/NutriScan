@@ -81,6 +81,55 @@ def test_load_frida_cleans_food_names(monkeypatch):
     result = load_frida("fake_file.xlsx")
 
     # Check cleaned result
+<<<<<<< HEAD
     assert "oksekød" in list(result["FødevareNavn"]) or " oksekød " in list(result["FødevareNavn"])
     assert "kartoffel" in list(result["FødevareNavn"])
     assert len(result) >= 2
+=======
+    assert list(result["FødevareNavn"]) == [
+        "oksekød",
+        "kartoffel"
+    ]
+
+    assert len(result) == 2
+
+# Test if low confidence matches are flagged for manual review
+def test_low_confidence_flag():
+
+    # Create sample Frida data
+    df = pd.DataFrame({
+        "FødevareNavn": [
+            "oksekød",
+            "kartoffel",
+            "mælk"
+        ],
+        "FoodID": [0, 1, 2],
+    })
+
+    # Use a completely different word to force a low confidence score
+    result = match_ingredient("xxxxxxxx", df)
+
+    # Check that the match is flagged for review
+    assert result["flagged_for_review"] is True
+
+
+# Test if threshold behaviour works correctly
+def test_threshold_behaviour():
+
+    # Create sample Frida data
+    df = pd.DataFrame({
+        "FødevareNavn": [
+            "kartoffel"
+        ],
+        "FoodID": [0],
+    })
+
+    # Small spelling mistake should still give a valid match
+    result = match_ingredient("kartofel", df)
+
+    # Check that confidence is high enough
+    assert result["confidence"] >= 80
+
+    # Check that it is not flagged for review
+    assert result["flagged_for_review"] is False
+>>>>>>> a47a90c (Update frida matcher tests)
