@@ -131,3 +131,26 @@ def test_parse_menu_vegetarian(monkeypatch):
     meal = result[0]
 
     assert meal["vegetarian"] is True
+
+# 9. Dessert is extracted correctly
+def test_parse_menu_dessert(monkeypatch):
+     
+    fake_rows = [
+        ("ONS Kylling", "Chokoladekage"),
+        ("14 Med ris og sovs", ""),
+    ]
+
+    def fake_get_rows_from_pdf(pdf_path):
+        return fake_rows
+
+    monkeypatch.setattr(
+        "pipeline.menu_parser.get_rows_from_pdf",
+        fake_get_rows_from_pdf
+    )
+
+    result = parse_menu("fake.pdf")
+
+    meal = result[0]
+
+    assert meal["dessert"] == "Chokoladekage"
+    

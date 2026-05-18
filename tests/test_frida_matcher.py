@@ -81,11 +81,9 @@ def test_load_frida_cleans_food_names(monkeypatch):
     result = load_frida("fake_file.xlsx")
 
     # Check cleaned result
-<<<<<<< HEAD
     assert "oksekød" in list(result["FødevareNavn"]) or " oksekød " in list(result["FødevareNavn"])
     assert "kartoffel" in list(result["FødevareNavn"])
     assert len(result) >= 2
-=======
     assert list(result["FødevareNavn"]) == [
         "oksekød",
         "kartoffel"
@@ -132,4 +130,3 @@ def test_threshold_behaviour():
 
     # Check that it is not flagged for review
     assert result["flagged_for_review"] is False
->>>>>>> a47a90c (Update frida matcher tests)
