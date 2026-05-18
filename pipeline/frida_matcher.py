@@ -1,3 +1,5 @@
+# When prompted for Enter the path to the Frida Excel file: data/Frida_5.5_Dataset.xlsx 
+
 import pandas as pd
 from rapidfuzz import process, fuzz
 
@@ -53,10 +55,15 @@ MANUAL_OVERRIDES = {
     "nannbrød":     "Hvedebrød, pitabrød, fint",
     "nannbrød med nigellafrø":  "Hvedebrød, pitabrød, fint",
     "stuvet ærter": "Grønne ærter, konserves",
-    "bailey's":        "Likør, advocaat",
+    "bailey's":        "Likør, uspec.",
+    "hvid chokolade":  "Chokolade, fløde",
+    "digestive":       "Kiks, 20-30% fuldkorn, digestivetype",
+    "hønsekød":        "Høne, kød, rå",
+    "vanilje":         "Sukker, stødt melis (sakkarose)",
 
 
-    # plantefars has no entry in Frida 5.5 — will be flagged and left unmatched
+
+    # plantefars and enebær has no entry in Frida 5.5 — will be flagged and left unmatched
 }
 
 
