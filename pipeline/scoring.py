@@ -50,6 +50,7 @@ TARGETS = {
     "sodium_mg":   {"min": None,  "target": 500,  "max": 750,   "unit": "mg"},
     "fat_sat_g":   {"min": None,  "target": 8.0,  "max": 12.0,  "unit": "g"},
     "sugar_g":     {"min": None,  "target": 12,   "max": 25,    "unit": "g"},
+    "potassium_mg": {"min": 800, "target": 1100, "max": None, "unit": "mg"},
 }
  
 # ---------------------------------------------------------------------------

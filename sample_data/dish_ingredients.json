@@ -7,28 +7,28 @@
   },
   "meat": {
     "Bøf stroganoff": {
-      "ingredients": ["oksekød", "løg", "champignon", "peberfrugt", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber"],
-      "amounts_g": [120, 60, 50, 20, 15, 50, 30, 8, 10, 1],
+      "ingredients": ["oksekød", "løg", "champignon", "peberfrugt", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber", "salt"],
+      "amounts_g": [120, 60, 50, 20, 15, 50, 30, 8, 10, 1, 2],
       "kostform": "normalkost"
     },
     "Frikadeller": {
       "ingredients": ["svinekød", "løg", "æg", "mælk", "hvedemel", "rasp", "smør", "salt", "sort peber", "muskatnød"],
-      "amounts_g": [120, 40, 50, 50, 20, 20, 10, 0.5, 1, 1],
+      "amounts_g": [120, 40, 50, 50, 20, 20, 20, 3, 1, 1],
       "kostform": "normalkost"
     },
     "Hakkebøf": {
       "ingredients": ["oksekød", "løg", "smør", "salt", "sort peber"],
-      "amounts_g": [150, 60, 10, 0.5, 1],
+      "amounts_g": [150, 60, 10, 1.5, 1],
       "kostform": "normalkost"
     },
     "Flæskesteg": {
       "ingredients": ["svinekød", "salt"],
-      "amounts_g": [180, 0.5],
+      "amounts_g": [180, 1],
       "kostform": "normalkost"
     },
     "Stegt kylling": {
       "ingredients": ["kylling", "smør", "salt", "sort peber"],
-      "amounts_g": [150, 10, 0.5, 1],
+      "amounts_g": [150, 10, 1, 1],
       "kostform": "normalkost"
     },
     "Kylling": {
@@ -88,7 +88,7 @@
     },
     "Kalkunschnitzel": {
       "ingredients": ["kalkun", "rasp", "æg", "smør", "salt"],
-      "amounts_g": [150, 30, 50, 10, 0.5],
+      "amounts_g": [150, 30, 50, 10, 1],
       "kostform": "normalkost"
     },
     "Enebærgryde": {
