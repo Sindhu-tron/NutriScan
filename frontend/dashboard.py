@@ -1550,7 +1550,7 @@ def make_add_meal_modal():
                 "and show you a grade preview before you confirm.",
                 style={"color": C_MUTED, "marginBottom": "18px", "fontSize": "13px"}
             ),
-            html.Label("Patient", style={"fontWeight": "bold", "marginBottom": "5px"}),
+            html.Label("Step 1: Select a resident", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#5a5a5a"}),
             dcc.Dropdown(
                 id="modal-patient-select",
                 options=patient_options,
@@ -1558,7 +1558,7 @@ def make_add_meal_modal():
                 style={"marginBottom": "18px"},
                 maxHeight=200,
             ),
-            html.Label("Menu day", style={"fontWeight": "bold", "marginBottom": "10px", "display": "block"}),
+            html.Label("Step 2: Select a meal day", style={"fontWeight": "bold", "marginBottom": "10px", "display": "block", "color": "#5a5a5a"}),
             html.Div(menu_dropdowns),
             # Hidden single dropdown that callbacks read from — set by the pattern-match callback below
             dcc.Dropdown(
@@ -1578,7 +1578,7 @@ def make_add_meal_modal():
                 "marginRight": "8px",
                 "cursor": "pointer"
             }),
-            html.Button("Score this meal →", id="modal-score", style={
+            html.Button("Step 3: Score this meal →", id="modal-score", style={
                 "backgroundColor": C_ACCENT,
                 "border": "none",
                 "borderRadius": "6px",
