@@ -132,8 +132,8 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
     flags = []
  
     # --- Excess penalty (value above max) ---
-    if t["max"] is not None and value > t["max"]:
-        overage = value - t["max"]
+    if t["max"] is not None and value >= t["max"]:
+        overage = max(value - t["target"], 0)
         base = (overage / t["max"]) * 5
         contribution += min(base * penalty_mult, 8.0)  # cap so no single nutrient dominates
  
@@ -157,6 +157,12 @@ def _score_nutrient(nutrient: str, value: float, conditions: List[str]):
                 f"⚠ Energy {value:.0f} kcal exceeds recommended range ({t['max']} kcal). "
                 "Review portion sizes."
             )
+        
+    # --- Graduated penalty for target→max zone (penalty-only nutrients) ---
+    if t["min"] is None and t["max"] is not None and t["target"] < value < t["max"]:
+        zone_ratio = (value - t["target"]) / max(t["max"] - t["target"], 0.001)
+        partial = zone_ratio * 2.0 * penalty_mult
+        contribution += partial
 
  
     # --- Deficiency penalty (value below min) ---

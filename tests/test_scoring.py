@@ -197,18 +197,18 @@ def test_score_week_summary():
 def test_saturated_fat_penalty_cap():
     nutrients_at_cap = {
         "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
-        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 8.0, "sugar_g": 8,
+        "calcium_mg": 300, "potassium_mg": 1100, "sodium_mg": 500, "fat_sat_g": 8.0, "sugar_g": 8,
     }
     nutrients_over_cap = {
         "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
-        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 12.0, "sugar_g": 8,
+        "calcium_mg": 300, "potassium_mg": 1100, "sodium_mg": 500, "fat_sat_g": 12.0, "sugar_g": 8,
     }
 
     result_at_cap   = score_meal(nutrients_at_cap, [])
     result_over_cap = score_meal(nutrients_over_cap, [])
 
     # Over the cap should score worse
-    assert result_over_cap["score"] > result_at_cap["score"]
+    assert result_over_cap["nutrient_scores"]["fat_sat_g"] > result_at_cap["nutrient_scores"]["fat_sat_g"]
     # Over the cap should raise a saturated fat flag
     assert any("Saturated fat" in flag for flag in result_over_cap["flags"])
     # At the cap should not raise a flag
@@ -263,10 +263,12 @@ def test_malnutrition_risk_rewards_protein():
 def test_high_cholesterol_penalises_sat_fat():
     nutrients = {
         "energy_kcal": 650, "protein_g": 25, "fiber_g": 8,
-        "calcium_mg": 300, "sodium_mg": 500, "fat_sat_g": 10.0, "sugar_g": 8,
+       "calcium_mg": 300, "potassium_mg": 1100, "sodium_mg": 500, "fat_sat_g": 10.0, "sugar_g": 8,
     }
     result_no_condition   = score_meal(nutrients, [])
     result_with_condition = score_meal(nutrients, ["High Cholesterol"])
 
     # High Cholesterol doubles the sat fat penalty
-    assert result_with_condition["score"] > result_no_condition["score"]
+    # (Total score may not increase because High Cholesterol also rewards fibre 1.5x,
+    # which can offset the sat fat penalty. We check the specific nutrient contribution.)
+    assert result_with_condition["nutrient_scores"]["fat_sat_g"] > result_no_condition["nutrient_scores"]["fat_sat_g"]

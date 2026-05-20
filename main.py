@@ -84,3 +84,7 @@ if __name__ == "__main__":
 # kill -9 $(lsof -ti :8050) 2>/dev/null
 # sleep 2
 # .venv/bin/python main.py
+
+# Run all tests (should see 50 passed)
+# cd Computer-Science-Project-Repository
+#  python -m pytest tests/ -v

@@ -1677,23 +1677,20 @@ app.layout = html.Div([
  
 # --- Callback 1: Render the correct page ---
 # This runs whenever the current page, patient, or meal changes.
-# It returns the right page layout and updates the title in the top bar.
+# It calls the API directly so the score is always fresh and synchronous —
+# no race condition with a separate auto-score callback.
 @app.callback(
     Output("page-content", "children"),
     Output("page-title",   "children"),
     Input("current-page",        "data"),
     Input("selected-patient-id", "data"),
     Input("selected-meal-key",   "data"),
-    Input("last-api-score",      "data"), 
 )
-
-def render_page(page, patient_id, meal_key, api_score):
-    # Find the patient object that matches the selected id
+def render_page(page, patient_id, meal_key):
     selected_patient = next(
         (p for p in PATIENTS if p["id"] == patient_id), PATIENTS[0]
     )
  
-    # Map page names to their display titles
     page_titles = {
         "dashboard":        "Patient Nutrition Dashboard",
         "patients":         "Patients",
@@ -1705,17 +1702,28 @@ def render_page(page, patient_id, meal_key, api_score):
     }
     title = page_titles.get(page, "NutriScan")
  
+    # For the dashboard page, fetch a live score from the API right now.
+    # This makes the render synchronous — no separate auto-score callback needed.
+    api_score = None
+    if page == "dashboard" and meal_key:
+        conditions = (
+            selected_patient["conditions"]["primary"] +
+            selected_patient["conditions"]["risk"]
+        )
+        pdf_path, day_number = parse_meal_key(meal_key)
+        api_score = api_score_meal(pdf_path, day_number, conditions, selected_patient["id"])
+ 
     page_map = {
         "dashboard":        lambda: page_dashboard(selected_patient, meal_key, api_score),
         "patients":         page_patients,
         "disease-profiles": page_disease_profiles,
         "data-sources":     page_data_sources,
-        "nutritional-gaps": lambda: page_nutritional_gaps(selected_patient), 
+        "nutritional-gaps": lambda: page_nutritional_gaps(selected_patient),
         "settings":         lambda: page_placeholder("Settings", "Reserved for future configuration options."),
         "meal-plans":       page_meal_plans,
     }
  
-    content_fn = page_map.get(page, lambda: page_dashboard(selected_patient, meal_key))
+    content_fn = page_map.get(page, lambda: page_dashboard(selected_patient, meal_key, api_score))
     return content_fn(), title
  
  
@@ -1743,8 +1751,6 @@ def navigate(*args):
     Output("add-meal-modal",     "is_open"),
     Output("selected-patient-id","data"),
     Output("selected-meal-key",  "data"),
-    Output("current-page",       "data", allow_duplicate=True),
-    Output("last-api-score",     "data"),
     Input("open-modal-btn",  "n_clicks"),
     Input("modal-cancel",    "n_clicks"),
     Input("modal-score",     "n_clicks"),
@@ -1758,36 +1764,23 @@ def navigate(*args):
 def handle_modal(open_click, cancel_click, score_click,
                  selected_patient, selected_meal,
                  is_open, current_patient, current_meal):
-
+ 
     triggered = ctx.triggered_id
-
+ 
     if triggered == "open-modal-btn":
-        return True, current_patient, current_meal, "dashboard", None
-
+        return True, current_patient, current_meal
+ 
     if triggered == "modal-cancel":
-        return False, current_patient, current_meal, "dashboard", None
-
+        return False, current_patient, current_meal
+ 
     if triggered == "modal-score":
         if not selected_patient or not selected_meal:
-            # Don't close the modal or update anything if selection is incomplete
-            return True, current_patient, current_meal, "dashboard", None
-        new_patient = selected_patient
-        new_meal    = selected_meal
-
-        # Fetch the real score from the API to display on the main dashboard
-        if selected_patient and selected_meal:
-            patient_obj = next((p for p in PATIENTS if p["id"] == new_patient), None)
-            if patient_obj:
-                conditions = patient_obj["conditions"]["primary"] + patient_obj["conditions"]["risk"]
-                pdf_path, day_number = parse_meal_key(new_meal)
-
-
-                api_result = api_score_meal(pdf_path, day_number, conditions, new_patient)
-                return False, new_patient, new_meal, "dashboard", api_result
-
-        return False, new_patient, new_meal, "dashboard", None
-
-    return is_open, current_patient, current_meal, "dashboard", None
+            # keep modal open, don't change anything
+            return True, current_patient, current_meal
+        # close modal, update patient + meal — render_page will re-fire and score
+        return False, selected_patient, selected_meal
+ 
+    return is_open, current_patient, current_meal
  
 # --- Callback 3b: Mutually exclusive menu dropdowns ---
 # When the user picks a day from one menu, the other three are cleared so only one meal can be selected at a time.
@@ -1930,28 +1923,22 @@ def update_modal_preview(patient_id, meal_key):
         })
     ])
 
-# --- Callback 5: Auto-score on page load and when patient/meal changes ---
-# This runs whenever the selected patient or meal changes and updates the meal score accordingly from the API.
-
+# --- Callback 5: Sidebar patient switcher ---
+# Clicking a patient name in the sidebar sets them as the selected patient
+# and navigates to the dashboard. render_page then fires and scores their meal.
 @app.callback(
-    Output("last-api-score", "data", allow_duplicate=True),
-    Input("selected-patient-id", "data"),
-    Input("selected-meal-key",   "data"),
-    prevent_initial_call='initial_duplicate'
+    Output("selected-patient-id", "data", allow_duplicate=True),
+    Output("current-page", "data", allow_duplicate=True),
+    [Input("sidebar-patient-" + p["id"], "n_clicks") for p in PATIENTS],
+    prevent_initial_call=True
 )
-def auto_score_on_selection(patient_id, meal_key):
-    patient_obj = next((p for p in PATIENTS if p["id"] == patient_id), None)
-    if not patient_obj or not meal_key:
-        return None
+def switch_patient_from_sidebar(*args):
+    triggered = ctx.triggered_id
+    if triggered:
+        patient_id = triggered.replace("sidebar-patient-", "")
+        return patient_id, "dashboard"
+    return PATIENTS[0]["id"], "dashboard"
 
-    conditions = (
-        patient_obj["conditions"]["primary"] +
-        patient_obj["conditions"]["risk"]
-    )
-
-    pdf_path, day_number = parse_meal_key(meal_key)
-
-    return api_score_meal(pdf_path, day_number, conditions, patient_id)
 
 # --- Callback 6: Patient View ---
 # Callback to update the selected patient and current page when a patient is viewed
