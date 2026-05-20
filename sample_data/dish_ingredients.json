@@ -1,10 +1,15 @@
 {
   "_metadata": {
-    "description": "Dish-to-ingredient mappings for Madservice Roskilde Kommune menus (March-April 2026)",
-    "source": "Manually compiled from Danish recipes by group members",
-    "frida_version": "5.5",
-    "notes": "Covers all dishes from menuplan-marts-2026, menuplan-april-2026, menuplan-april-2026-pescetarisk, and pescetarisk-menuplan-vegetarretter."
+      "description": "Dish ingredients catalogue for the NutriScan pipeline. Maps each dish name to a list of ingredients and gram amounts per portion. Used by pdf_extractor.py to enrich menu meals with ingredient data before Frida matching and nutrient lookup.",
+      "structure": "Each dish entry contains: ingredients (list of ingredient names), amounts_g (list of gram amounts per portion, one per ingredient), kostform (diet type: normalkost | pescetarian | vegetar)",
+      "categories": "meat | fish | vegetarian | desserts",
+      "portion_basis": "Institutionskost 2025 serving sizes and standard Danish recipes",
+      "frida_matching": "Ingredient names are matched to Frida 5.5 via frida_matcher.py. Names should match the keys in MANUAL_OVERRIDES where possible to ensure high-confidence matches.",
+      "known_gaps": "plantefars (plant-based mince) and enebær (juniper berry) have no entry in Frida 5.5 and will be flagged as unmatched by the pipeline.",
+      "last_updated": "May 2026",
+      "coverage": "138 dishes covering the March and April 2026 normal and pescetarian menus from Madservice Roskilde Kommune"
   },
+  
   "meat": {
     "Bøf stroganoff": {
       "ingredients": ["oksekød", "løg", "champignon", "peberfrugt", "tomatpuré", "oksebouillon", "creme fraiche", "smør", "hvedemel", "sort peber", "salt"],

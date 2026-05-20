@@ -1,16 +1,25 @@
 """
-main.py
--------
+api/main.py
+-----------
 Responsibility:
 - Expose the NutriScan pipeline as a REST API
-- Sits between the Dash dashboard (presentation layer) and the pipeline + SQLite
-  (logic + data layer) -- the API is the middle tier of the three-tier architecture
-- Validates requests and responses with Pydantic so the contract between layers is explicit
+- Act as the middle tier between the Dash dashboard (presentation layer)
+  and the pipeline modules and SQLite database (logic and data layer)
+- Validate all requests and responses with Pydantic so the contract
+  between the dashboard and the pipeline is explicit and documented
+
+Endpoints:
+    GET  /health                        Liveness check
+    POST /menu/parse                    Parse a menu PDF, return raw meal list
+    POST /score/meal                    Score one meal for one patient
+    POST /score/week                    Score all meals in a menu for one patient
+    GET  /patients                      Return all patients from the database
+    GET  /patients/{patient_id}/history Return scoring history for one patient
 
 Run the API locally:
     uvicorn api.main:app --reload
 
-Then open the auto-generated docs in the browser:
+Auto-generated interactive documentation:
     http://127.0.0.1:8000/docs
 """
 

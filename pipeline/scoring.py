@@ -2,32 +2,28 @@
 scoring.py
 ----------
 Responsibility:
-- Take a fully enriched meal dict (from pdf_extractor.py) and a patient's conditions
-- Look up nutrients via the meal's already-computed nutrient dict
-- Apply condition-specific multipliers (NNR 2023 + Institutionskost 2025)
-- Return a detailed score: letter grade A-E, flags, per-nutrient breakdown
- 
-Nutrient thresholds are based on:
-    Nordic Nutrition Recommendations 2023 (NNR 2023)
-    Anbefalinger for den danske institutionskost 2025
- 
-Per-meal targets assume 3 main meals/day for an elderly person (~1800-2200 kcal/day):
-    Energy:    600-750 kcal
-    Protein:   20-30 g     (NNR: 1.2-1.4 g/kg/day for elderly)
-    Fibre:     6-8 g       (NNR: 25 g/day total)
-    Calcium:   250-350 mg  (NNR: 800-1000 mg/day)
-    Sodium:    <600 mg     (NNR: <5 g salt/day = <2000 mg sodium)
-    Sat fat:   <8 g        (NNR: <10% of energy from saturated fat)
- 
-Note on sodium: nutrient_lookup.py stores sodium in mg (as Frida does).
-All sodium thresholds in this module are therefore in mg.
- 
+- Accept a fully enriched meal dict (from pdf_extractor.py) and a patient's conditions
+- Apply condition-specific multipliers grounded in NNR 2023 and Institutionskost 2025
+- Return a letter grade A-E, a numeric score, clinical flags, and a per-nutrient breakdown
+
+Nutrient thresholds (per meal, assuming 3 main meals/day at ~1800-2200 kcal/day):
+    Energy:       500-1000 kcal   (target 700 kcal)
+    Protein:      min 20 g        (NNR 2023: 1.2 g/kg/day for elderly)
+    Fibre:        min 5 g         (NNR 2023: 25-35 g/day total)
+    Calcium:      min 200 mg      (NNR 2023: 950 mg/day for adults over 70)
+    Potassium:    min 800 mg      (NNR 2023: 3500 mg/day)
+    Sodium:       max 750 mg      (NNR 2023 CDRR: 2300 mg/day)
+    Saturated fat:max 12 g        (NNR 2023: <10% of energy)
+    Sugar:        max 25 g        (NNR 2023: limit free sugars)
+
+Note on sodium: all values are in mg throughout this module, matching Frida 5.5.
+
 Usage:
     from pipeline.scoring import score_meal, score_week
- 
+
     result = score_meal(enriched_meal, conditions=["Hypertension", "Osteoporosis"])
     weekly = score_week(list_of_results)
- 
+
 Run directly to test:
     python pipeline/scoring.py
 """

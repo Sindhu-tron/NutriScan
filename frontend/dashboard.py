@@ -1,19 +1,38 @@
-# The dashboard.py module is the main frontend for the NutriScan system and it calls each module in the pipeline in sequence and displays the results. 
-# The pipeline modules don't know anything about the frontend, they just take inputs and return outputs. The dashboard is what stings them together for the user. 
-# It is built with Dash -  a Python library that lets us build web interfaces. It runs a local web server and we interact with it through the browser.
-# Run this file directly to start the dashboard: python frontend/dashboard.py 
-# Run this to start the API in a split terminal: uvicorn api.main:app --reload
-# Then open your browser at: http://127.0.0.1:8050
-# dependencies needed (pip install dash dash-bootstrap-components)
-
 """
-How this file is structured:
-    1. Data - all the patient data, meal data and nutrient data used in the dashboard
-    2. Scoring function - a simplified version of the scoring algorithm from scoring.py
-    3. Helper functions - each function builds one part of the dashboard (a card, a section etc.)
-    4. Page layouts - functions that put the helper components together into full pages
-    5. App layout - the overall structure of the app (sidebar + main content area)
-    6. Callbacks - the functions that make the dashboard interactive
+dashboard.py
+------------
+Responsibility:
+- Provide the web-based frontend for the NutriScan system
+- Call the FastAPI backend to score meals and retrieve patient data
+- Display nutritional grades, per-nutrient breakdowns, and clinical flags
+
+The dashboard does not contain any scoring or matching logic of its own.
+All nutritional computation is delegated to the API, which in turn calls
+the pipeline modules (pdf_extractor, frida_matcher, nutrient_lookup, scoring).
+
+This file is structured in six sections:
+    1. API client functions  - thin wrappers around the FastAPI endpoints
+    2. Fallback data         - hardcoded patients and nutrients used only when the API is offline
+    3. Shared styles         - colour constants and CSS dicts reused across components
+    4. UI components         - functions that build one reusable piece of the interface
+    5. Page layouts          - functions that compose components into full pages
+    6. App layout            - the top-level Dash layout (sidebar + content area + modals)
+    7. Callbacks             - functions that make the dashboard interactive
+
+Usage:
+    Start the API first (terminal 1):
+        uvicorn api.main:app --reload
+
+    Then start the dashboard (terminal 2):
+        python frontend/dashboard.py
+
+    Or start both together from the project root:
+        python main.py
+
+    Open http://127.0.0.1:8050 in your browser.
+
+Dependencies:
+    pip install dash dash-bootstrap-components requests
 """
 
 import sys

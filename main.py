@@ -1,58 +1,96 @@
-# main.py
-# Entry point for the NutriScan system.
-# Starts both the FastAPI backend and the Dash frontend together
-# so the whole system runs with one command from the project root:
-#
-#     python main.py
-#
-# Always run with the venv Python:
-#     .venv/bin/python main.py
-#
-# Open http://127.0.0.1:8050 in your browser.
+"""
+main.py
+-------
+Entry point for the NutriScan system. Starts both the FastAPI backend and the Dash frontend together 
+so the whole system runs with one command:
 
+    python main.py
+
+Requirements:
+    - Run from the project root directory
+    - Use the venv Python: .venv/bin/python main.py
+
+Once running, open http://127.0.0.1:8050 in your browser.
+Press Ctrl+C to stop both servers.
+
+------------------------------------------------------------------------
+TROUBLESHOOTING
+------------------------------------------------------------------------
+
+If ports are already in use, free them first then re-run:
+
+    kill -9 $(lsof -ti :8000) 2>/dev/null
+    kill -9 $(lsof -ti :8050) 2>/dev/null
+    sleep 2
+    .venv/bin/python main.py
+
+------------------------------------------------------------------------
+RUNNING TESTS
+------------------------------------------------------------------------
+
+Run all unit tests from the project root (should see 50 passed):
+
+    python -m pytest tests/ -v
+
+------------------------------------------------------------------------
+"""
+
+import os
 import subprocess
 import sys
 import time
-import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def main():
+def _free_port(port: int) -> None:
+    """Kill any process already listening on the given port."""
+    subprocess.call(
+        f"lsof -ti :{port} | xargs kill -9 2>/dev/null || true",
+        shell=True
+    )
+
+
+def _resolve_python() -> Path:
+    """
+    Return the venv Python executable.
+    Falls back to sys.executable if the venv sibling binary is not found.
+    """
+    venv_python = Path(sys.executable).parent / "python"
+    return venv_python if venv_python.exists() else Path(sys.executable)
+
+
+def main() -> None:
     print("=" * 50)
     print("  NutriScan — RUC Computer Science Project 2026")
     print("=" * 50)
     print()
 
-    # Kill anything already on port 8000 so we get a clean start
-    subprocess.call("lsof -ti :8000 | xargs kill -9 2>/dev/null || true", shell=True)
+    # Clear ports so we always get a clean start
+    _free_port(8000)
 
-    # Use the venv Python explicitly to avoid picking up system anaconda
-    venv_python = Path(sys.executable).parent / "python"
-    if not venv_python.exists():
-        venv_python = Path(sys.executable)
+    python = _resolve_python()
 
-    # Start the FastAPI backend on port 8000
+    # Start the FastAPI backend
     print("Starting API server on http://127.0.0.1:8000 ...")
     api_process = subprocess.Popen(
-        [str(venv_python), "-m", "uvicorn", "api.main:app", "--port", "8000"],
+        [str(python), "-m", "uvicorn", "api.main:app", "--port", "8000"],
         cwd=PROJECT_ROOT,
     )
 
-    # Give the API a moment to start before the dashboard tries to connect
+    # Give the API time to initialise before the dashboard connects
     time.sleep(2)
 
-    # Build the environment for the dashboard subprocess
     # NUTRISCAN_NO_DEBUG=1 tells dashboard.py to run with debug=False
-    # so Werkzeug doesn't try to attach to a terminal that doesn't exist
+    # so Werkzeug does not try to attach a reloader to a non-interactive process
     env = os.environ.copy()
     env["NUTRISCAN_NO_DEBUG"] = "1"
 
-    # Start the Dash frontend on port 8050
+    # Start the Dash frontend
     print("Starting dashboard on http://127.0.0.1:8050 ...")
     dashboard_process = subprocess.Popen(
-        [str(venv_python), "frontend/dashboard.py"],
+        [str(python), "frontend/dashboard.py"],
         cwd=PROJECT_ROOT,
         env=env,
     )
@@ -63,12 +101,10 @@ def main():
     print("Press Ctrl+C to stop.")
     print()
 
-    # Keep running until the user presses Ctrl+C
     try:
         api_process.wait()
     except KeyboardInterrupt:
-        print()
-        print("Shutting down...")
+        print("\nShutting down...")
         api_process.terminate()
         dashboard_process.terminate()
         api_process.wait()
@@ -78,13 +114,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# If Port 8050 is already in use
-# kill -9 $(lsof -ti :8000) 2>/dev/null
-# kill -9 $(lsof -ti :8050) 2>/dev/null
-# sleep 2
-# .venv/bin/python main.py
-
-# Run all tests (should see 50 passed)
-# cd Computer-Science-Project-Repository
-#  python -m pytest tests/ -v

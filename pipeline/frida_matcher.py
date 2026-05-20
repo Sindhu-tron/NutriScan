@@ -1,3 +1,36 @@
+"""
+frida_matcher.py
+----------------
+Responsibility:
+- Translate informal Danish ingredient names from menu PDFs and the dish
+  catalogue into the exact food names used in the Frida 5.5 database
+- Return a confidence score and flag low-quality matches for manual review
+
+Matching strategy (three stages):
+    1. Manual override dictionary — known problem cases resolved immediately
+       at confidence 100, bypassing the algorithm entirely
+    2. Substring matching — find all Frida names containing the query as a
+       substring, then select the shortest (most generic) candidate
+    3. Fuzzy fallback — if no substring candidate exists, use rapidfuzz
+       token_set_ratio across the full Frida food list
+
+Confidence threshold: 50. Matches below this are flagged for manual review
+and stored in the ingredient_matches table with flagged_for_review=True.
+The threshold is set at 50 rather than the conventional 80 because short
+Danish ingredient names naturally produce lower raw similarity scores
+against longer Frida entries, even when the match is correct.
+
+Usage:
+    from pipeline.frida_matcher import load_frida, match_ingredient
+
+    frida_df = load_frida("data/Frida_5.5_Dataset.xlsx")
+    result   = match_ingredient("kartoffel", frida_df)
+
+Run directly to test:
+    python pipeline/frida_matcher.py
+    (prompts for path to Frida Excel file)
+"""
+
 # When prompted for Enter the path to the Frida Excel file: data/Frida_5.5_Dataset.xlsx 
 
 import pandas as pd

@@ -1,17 +1,27 @@
-# This script builds the SQLite database (nutriscan.db) used by the NutriScan project.
-# It collects everything we need into one file so we can query patients, dishes,
-# Frida matches and meal scores from one place.
-#
-# The database contains six tables:
-#   patients            - the fake patients from dashboard.py
-#   patient_conditions  - one row per condition with status (primary/risk/inactive)
-#   dishes              - one row per dish from dish_ingredients.json
-#   dish_ingredients    - the ingredients in each dish, with grams
-#   ingredient_matches  - the output from the Frida matcher
-#   meal_scores         - the score and grade from scoring.py for every patient and dish
-#
-# Run this file directly to (re)build the database:
-#     python pipeline/build_db.py
+"""
+build_db.py
+-----------
+Responsibility:
+- Build the SQLite database (nutriscan.db) used by the NutriScan API and dashboard
+- Orchestrates the pipeline modules to pre-compute and cache all matches and scores
+
+The database contains six tables:
+    patients            Synthetic resident profiles
+    patient_conditions  One row per condition with status (primary / risk / inactive)
+    dishes              One row per dish from dish_ingredients.json
+    dish_ingredients    Ingredients and gram amounts for each dish
+    ingredient_matches  Frida matcher output for every unique ingredient
+    meal_scores         Grade and score from scoring.py for every patient-dish pair
+
+A seventh table (score_history) is created at API startup by api/main.py
+and populated at runtime when scoring events occur.
+
+Run this file to (re)build the database from scratch:
+    python pipeline/build_db.py
+
+Note: re-running deletes and recreates nutriscan.db entirely, so any
+score_history entries written at runtime will be lost.
+"""
  
 import json
 import sqlite3

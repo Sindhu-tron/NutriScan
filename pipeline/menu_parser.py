@@ -1,19 +1,30 @@
 """
-This module reads the weekly menu PDF from Madservice Roskilde Kommune and extracts the meals into a structured format that the rest of the pipeline can work with.
+menu_parser.py
+--------------
+Responsibility:
+- Read a Madservice Roskilde menu PDF and extract each day's meal into a
+  structured dict that the rest of the pipeline can work with
 
-The menu has a two-column layout where the main dish and dessert are on the same line but in different columns. We use pdfplumber to get the x-position of each word so we can tell which column it belongs to.
+The menu uses a two-column layout where the main dish and dessert appear on
+the same line in separate columns. pdfplumber's word-position data is used
+to split them by x-coordinate (threshold: 300).
 
-Input: Path to a PDF menu file (e.g. menuplan-marts-2026.pdf) 
-Output: List of dicts, one per day, with keys:
-            - day_number (int)
-            - day_name (str)
-            - main (str) 
-            - sides (list of str)
-            - dessert (str)
-            - vegetarian (bool) 
+Input:  Path to a menu PDF (e.g. sample_data/menuplan-marts-2026.pdf)
+Output: List of dicts, one per day, each with keys:
+            - day_number  (int)
+            - day_name    (str)   e.g. "MAN"
+            - main        (str)   e.g. "Frikadeller"
+            - sides       (list of str)
+            - dessert     (str)
+            - vegetarian  (bool)
 
-Usage: 
+Usage:
+    from pipeline.menu_parser import parse_menu
 
+    meals = parse_menu("sample_data/menuplan-marts-2026.pdf")
+
+Run directly to test:
+    python pipeline/menu_parser.py sample_data/menuplan-marts-2026.pdf
 """
 
 import re

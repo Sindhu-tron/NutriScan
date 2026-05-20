@@ -1,16 +1,23 @@
 """
 nutrient_lookup.py
-
+------------------
 Responsibility:
 - Load the Frida 5.5 food composition dataset
 - Retrieve nutrient values per 100 g using Frida ParameterIDs
-- Scale nutrients by ingredient amounts (grams)
-- Aggregate nutrients across multiple ingredients
+- Scale nutrients by ingredient gram amounts
+- Aggregate nutrients across multiple ingredients into a single meal profile
 
 Design notes:
 - Frida 5.5 stores nutrients as numeric ParameterIDs rather than stable
-  textual column names. Nutrient lookup therefore uses these ParameterIDs
-  directly for robustness and unambiguous access.
+  textual column names. Lookup uses these IDs directly for robustness.
+- The dataset is cached in memory after the first load to avoid re-reading
+  the 12 MB Excel file on every pipeline call.
+
+Usage:
+    from pipeline.nutrient_lookup import nutrients_for_food, aggregate_nutrients
+
+    n = nutrients_for_food("Torsk, filet, rå", grams=120)
+    total = aggregate_nutrients([n1, n2, n3])
 """
 
 from pathlib import Path
