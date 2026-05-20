@@ -521,7 +521,7 @@ def make_sidebar():
         nav_items.append(
             html.P(section_title, style={
                 "color": "#8fa3b0",
-                "fontSize": "10px",
+                "fontSize": "12px",
                 "fontWeight": "bold",
                 "letterSpacing": "1.5px",
                 "marginTop": "22px",
@@ -536,7 +536,7 @@ def make_sidebar():
                     "borderRadius": "6px",
                     "cursor": "pointer",
                     "color": "#c8d6df",
-                    "fontSize": "13px",
+                    "fontSize": "15px",
                     "marginBottom": "2px"
                 })
             )
@@ -553,7 +553,7 @@ def make_sidebar():
             }),
             html.P("Meal nutrition analysis · RUC 2026", style={
                 "color": "#8fa3b0",
-                "fontSize": "10px",
+                "fontSize": "12px",
                 "margin": "4px 0 0 0"
             })
         ], style={"padding": "24px 18px 14px"}),
@@ -624,12 +624,12 @@ def make_patient_card(patient):
             html.Div([
                 html.H4(patient["name"], style={
                     "margin": "0 0 3px 0",
-                    "fontSize": "16px",
+                    "fontSize": "18px",
                     "color": C_TEXT
                 }),
                 html.P(
                     f"#{patient['id']} · {patient['sex']} · Age {patient['age']} · {patient['location']}",
-                    style={"margin": "0", "color": C_MUTED, "fontSize": "12px"
+                    style={"margin": "0", "color": C_MUTED, "fontSize": "14px"
 }
                 ),
             ]),
@@ -660,7 +660,7 @@ def make_score_cards(nutrients, grade, grade_description):
         "color": C_MUTED, "margin": "0 0 8px 0"
     }
     stat_value_style = {
-        "margin": "0 0 4px 0", "fontSize": "26px", "fontWeight": "bold",
+        "margin": "0 0 4px 0", "fontSize": "28px", "fontWeight": "bold",
         "color": C_TEXT
     }
     stat_sub_style = {
@@ -702,16 +702,16 @@ def make_score_cards(nutrients, grade, grade_description):
                     "lineHeight": "1"
                 }),
                 html.Div([
-                    html.P("Grade", style={"fontSize": "11px", "color": C_MUTED, "margin": "0"
+                    html.P("Grade", style={"fontSize": "14px", "color": C_MUTED, "margin": "0"
 }),
                     html.P(grade_description, style={
-                        "fontSize": "11px", "color": grade_color,
+                        "fontSize": "13px", "color": grade_color,
                         "fontWeight": "bold", "margin": "0"
                     })
                 ], style={"marginLeft": "14px"})
             ], style={"display": "flex", "alignItems": "center"}),
             html.P("A = Excellent  ·  B = Good  ·  C = Adequate  ·  D = Poor  ·  E = Critical",
-                   style={"fontSize": "9px", "color": "#bbb",
+                   style={"fontSize": "9$px", "color": "#bbb",
                           "margin": "10px 0 0 0"
 })
         ], style={**CARD_STYLE, "flex": "1", "marginBottom": "0",
@@ -723,7 +723,7 @@ def make_score_cards(nutrients, grade, grade_description):
 def make_meal_card(meal):
     """Shows today's main dish, sides, and dessert."""
     section_label = {
-        "fontSize": "9px", "fontWeight": "bold", "letterSpacing": "1.5px",
+        "fontSize": "11px", "fontWeight": "bold", "letterSpacing": "1.5px",
         "color": C_MUTED, "margin": "0 0 4px 0"
     }
     return html.Div([
@@ -1301,7 +1301,7 @@ def page_nutritional_gaps(patient, pdf_path="sample_data/menuplan-marts-2026.pdf
                     "flex": str(count),
                     "backgroundColor": GRADE_COLORS.get(grade, "#888"),
                     "color": "white",
-                    "fontSize": "11px",
+                    "fontSize": "13px",
                     "fontWeight": "bold",
                     "display": "flex",
                     "alignItems": "center",
@@ -1326,8 +1326,8 @@ def page_nutritional_gaps(patient, pdf_path="sample_data/menuplan-marts-2026.pdf
         color  = C_GREEN if capped >= 0.85 else (C_ORANGE if capped >= 0.6 else C_RED)
         nutrient_rows.append(html.Div([
             html.Div([
-                html.Span(label, style={"fontSize": "12px", "fontWeight": "bold", "color": C_TEXT}),
-                html.Span(value_str, style={"fontSize": "11px", "color": C_MUTED, "float": "right"}),
+                html.Span(label, style={"fontSize": "14px", "fontWeight": "bold", "color": C_TEXT}),
+                html.Span(value_str, style={"fontSize": "12px", "color": C_MUTED, "float": "right"}),
             ]),
             html.Div(
                 html.Div(style={
@@ -1548,7 +1548,7 @@ def make_add_meal_modal():
             html.P(
                 "Pick a patient and a menu day. The system will run the scoring algorithm "
                 "and show you a grade preview before you confirm.",
-                style={"color": C_MUTED, "marginBottom": "18px", "fontSize": "13px"}
+                style={"color": C_MUTED, "marginBottom": "18px", "fontSize": "15px"}
             ),
             html.Label("Step 1: Select a resident", style={"fontWeight": "bold", "marginBottom": "5px", "color": "#5a5a5a"}),
             dcc.Dropdown(
@@ -1558,7 +1558,7 @@ def make_add_meal_modal():
                 style={"marginBottom": "18px"},
                 maxHeight=200,
             ),
-            html.Label("Step 2: Select a meal day", style={"fontWeight": "bold", "marginBottom": "10px", "display": "block", "color": "#5a5a5a"}),
+            html.Label("Step 2: Select a meal day", style={"fontWeight": "bold", "marginBottom": "15px", "display": "block", "color": "#5a5a5a"}),
             html.Div(menu_dropdowns),
             # Hidden single dropdown that callbacks read from — set by the pattern-match callback below
             dcc.Dropdown(
@@ -1833,7 +1833,7 @@ def update_modal_preview(patient_id, meal_key):
     if not patient_id or not meal_key:
         return html.P(
             "Select a patient and a meal day to see a grade preview.",
-            style={"color": "#aaa", "fontSize": "12px"
+            style={"color": "#aaa", "fontSize": "13px"
 }
         )
  
@@ -1910,7 +1910,7 @@ def update_modal_preview(patient_id, meal_key):
                     "lineHeight": "1"
                 }),
                 html.P(grade_description, style={
-                    "fontSize": "11px", "color": grade_color,
+                    "fontSize": "13px", "color": grade_color,
                     "fontWeight": "bold", "margin": "0"
                 })
             ], style={"textAlign": "center"})
