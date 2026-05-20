@@ -1479,7 +1479,54 @@ def page_placeholder(title, message):
 # It lets the user select a patient and a menu day, shows a preview of the
 # score, and then updates the dashboard when confirmed.
 # =============================================================================
- 
+def make_welcome_modal():
+    nav_rows = [
+        ("🏠  Dashboard",        "Your main view. Select a patient and score a meal to see the nutritional grade and clinical flags."),
+        ("👥  Patients",         "Browse all residents and their health conditions at a glance."),
+        ("🍽️  Meal plans",        "View the full monthly menu from Madservice Roskilde."),
+        ("📊  Nutritional gaps", "Week-level summary of average nutrient intake for a resident."),
+        ("🏥  Disease profiles", "See how each health condition adjusts the scoring multipliers."),
+        ("📁  Data sources",     "Information about the Frida 5.5 database and menu data used."),
+    ]
+    nav_items = []
+    for icon_label, desc in nav_rows:
+        nav_items.append(
+            html.Div([
+                html.Span(icon_label, style={"fontWeight": "bold", "color": C_TEXT, "fontSize": "13px", "minWidth": "170px", "display": "inline-block"}),
+                html.Span(desc, style={"color": C_MUTED, "fontSize": "13px"}),
+            ], style={"marginBottom": "8px", "display": "flex", "gap": "12px"})
+        )
+    return dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle("Welcome to NutriScan", style={"color": C_TEXT, "fontSize": "18px"}), close_button=False),
+        dbc.ModalBody([
+            html.P("NutriScan scores institutional meals against NNR 2023 and Institutionskost 2025, personalised to each resident's health conditions.", style={"color": C_MUTED, "fontSize": "13px", "marginBottom": "18px"}),
+            html.P("HOW TO SCORE A MEAL", style={"fontSize": "10px", "fontWeight": "bold", "letterSpacing": "1.5px", "color": C_MUTED, "marginBottom": "10px"}),
+            html.Div([
+                html.Div([
+                    html.Div("1", style={"width": "26px", "height": "26px", "borderRadius": "50%", "backgroundColor": C_ACCENT, "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontWeight": "bold", "fontSize": "13px", "flexShrink": "0"}),
+                    html.Div([html.Span("Click  "), html.Span("+ Add meal", style={"backgroundColor": C_ACCENT, "color": "white", "borderRadius": "4px", "padding": "2px 8px", "fontSize": "12px", "fontWeight": "bold"}), html.Span("  in the top-right corner.")]),
+                ], style={"display": "flex", "alignItems": "center", "gap": "12px", "marginBottom": "10px"}),
+                html.Div([
+                    html.Div("2", style={"width": "26px", "height": "26px", "borderRadius": "50%", "backgroundColor": C_ACCENT, "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontWeight": "bold", "fontSize": "13px", "flexShrink": "0"}),
+                    html.Span("Select a resident from the dropdown.", style={"color": C_TEXT, "fontSize": "13px"}),
+                ], style={"display": "flex", "alignItems": "center", "gap": "12px", "marginBottom": "10px"}),
+                html.Div([
+                    html.Div("3", style={"width": "26px", "height": "26px", "borderRadius": "50%", "backgroundColor": C_ACCENT, "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontWeight": "bold", "fontSize": "13px", "flexShrink": "0"}),
+                    html.Span("Pick a meal day from one of the four menu dropdowns, then click Score this meal.", style={"color": C_TEXT, "fontSize": "13px"}),
+                ], style={"display": "flex", "alignItems": "center", "gap": "12px", "marginBottom": "18px"}),
+            ]),
+            html.Hr(style={"borderColor": C_BORDER}),
+            html.P("PAGES", style={"fontSize": "10px", "fontWeight": "bold", "letterSpacing": "1.5px", "color": C_MUTED, "marginBottom": "10px", "marginTop": "14px"}),
+            html.Div(nav_items),
+            html.Hr(style={"borderColor": C_BORDER}),
+            html.P("⚠ NutriScan uses synthetic patient data. Do not use for clinical decisions.", style={"color": C_MUTED, "fontSize": "11px", "marginTop": "12px", "marginBottom": "0"}),
+        ]),
+        dbc.ModalFooter(
+            html.Button("Got it — take me to the dashboard", id="welcome-close", style={"backgroundColor": C_ACCENT, "border": "none", "borderRadius": "6px", "padding": "8px 20px", "color": "white", "cursor": "pointer", "fontWeight": "bold", "fontSize": "13px"})
+        )
+    ], id="welcome-modal", is_open=True, size="lg", backdrop="static")
+
+
 def make_add_meal_modal():
     """
     Builds the modal popup for scoring a meal.
@@ -1619,6 +1666,7 @@ app.layout = html.Div([
     make_sidebar(),
  
     # Modal popup (hidden by default, shown when + ADD Meal is clicked)
+    make_welcome_modal(),
     make_add_meal_modal(),
  
     # Main content area
@@ -1674,7 +1722,14 @@ app.layout = html.Div([
 # Callbacks are what make Dash interactive. Each callback is a function that
 # runs automatically when its Input changes, and updates its Output.
 # =============================================================================
- 
+@app.callback(
+    Output("welcome-modal", "is_open"),
+    Input("welcome-close", "n_clicks"),
+    prevent_initial_call=True
+)
+def close_welcome_modal(n):
+    return False
+
 # --- Callback 1: Render the correct page ---
 # This runs whenever the current page, patient, or meal changes.
 # It calls the API directly so the score is always fresh and synchronous —
