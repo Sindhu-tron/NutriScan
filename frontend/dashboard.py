@@ -245,6 +245,8 @@ SAMPLE_MEALS = {
 # The real pipeline gives much more accurate numbers
 # (see pdf_extractor.py + nutrient_lookup.py), but these work fine for the demo.
 # Sodium is stored in grams here — calculate_grade() converts to mg before scoring.
+# Fallback nutrient values used ONLY when the API is offline.
+# When the API is running, all nutrient data comes from the live pipeline instead.
 MEAL_NUTRIENTS = {
     "March 2026 - Day 1":  {"energy": 680, "protein": 38, "carbs": 52, "fibre": 4,  "calcium": 180, "sodium": 0.55},
     "March 2026 - Day 2":  {"energy": 620, "protein": 42, "carbs": 48, "fibre": 6,  "calcium": 210, "sodium": 0.45},
@@ -1978,36 +1980,21 @@ def update_modal_preview(patient_id, meal_key):
         })
     ])
 
-# --- Callback 5: Sidebar patient switcher ---
-# Clicking a patient name in the sidebar sets them as the selected patient
-# and navigates to the dashboard. render_page then fires and scores their meal.
+# --- Callback 5: Patient selection ---
+# Handles both the sidebar patient list and the "View dashboard" buttons
+# on the Patients page. Both update the selected patient and navigate to
+# the dashboard — the only difference is the id prefix of the trigger.
 @app.callback(
     Output("selected-patient-id", "data", allow_duplicate=True),
     Output("current-page", "data", allow_duplicate=True),
-    [Input("sidebar-patient-" + p["id"], "n_clicks") for p in PATIENTS],
+    [Input("sidebar-patient-" + p["id"], "n_clicks") for p in PATIENTS] +
+    [Input("view-patient-"    + p["id"], "n_clicks") for p in PATIENTS],
     prevent_initial_call=True
 )
-def switch_patient_from_sidebar(*args):
+def select_patient(*args):
     triggered = ctx.triggered_id
     if triggered:
-        patient_id = triggered.replace("sidebar-patient-", "")
-        return patient_id, "dashboard"
-    return PATIENTS[0]["id"], "dashboard"
-
-
-# --- Callback 6: Patient View ---
-# Callback to update the selected patient and current page when a patient is viewed
-
-@app.callback(
-    Output("selected-patient-id", "data", allow_duplicate=True),
-    Output("current-page", "data", allow_duplicate=True),
-    [Input("view-patient-" + p["id"], "n_clicks") for p in PATIENTS],
-    prevent_initial_call=True
-)
-def view_patient_dashboard(*args):
-    triggered = ctx.triggered_id
-    if triggered:
-        patient_id = triggered.replace("view-patient-", "")
+        patient_id = triggered.replace("sidebar-patient-", "").replace("view-patient-", "")
         return patient_id, "dashboard"
     return PATIENTS[0]["id"], "dashboard"
 
