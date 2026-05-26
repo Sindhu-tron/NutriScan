@@ -74,6 +74,8 @@ class NutrientValues(BaseModel):
     potassium_mg: float = 0.0
     calcium_mg: float = 0.0
 
+# potassium_mg is tracked by the pipeline and scoring module (NNR 2023: 3500 mg/day) and is included here 
+# so the API contract fully reflects what the pipeline produces.
 
 class MealSummary(BaseModel):
     day_number: int

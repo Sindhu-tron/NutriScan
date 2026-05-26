@@ -92,11 +92,9 @@ MANUAL_OVERRIDES = {
     "hvid chokolade":  "Chokolade, fløde",
     "digestive":       "Kiks, 20-30% fuldkorn, digestivetype",
     "hønsekød":        "Høne, kød, rå",
-    "vanilje":         "Sukker, stødt melis (sakkarose)",
 
 
-
-    # plantefars and enebær has no entry in Frida 5.5 — will be flagged and left unmatched
+    # plantefars, enebær, and vanilje have no accurate Frida 5.5 entry — will be flagged and left unmatched
 }
 
 

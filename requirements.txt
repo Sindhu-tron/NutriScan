@@ -5,6 +5,7 @@ pdfplumber
 fastapi
 uvicorn
 dash
+dash-bootstrap-components
+requests
 plotly
-sqlalchemy
 pytest

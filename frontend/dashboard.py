@@ -732,7 +732,7 @@ def make_score_cards(nutrients, grade, grade_description):
                 ], style={"marginLeft": "14px"})
             ], style={"display": "flex", "alignItems": "center"}),
             html.P("A = Excellent  ·  B = Good  ·  C = Adequate  ·  D = Poor  ·  E = Critical",
-                   style={"fontSize": "9$px", "color": "#bbb",
+                   style={"fontSize": "9px", "color": "#bbb",
                           "margin": "10px 0 0 0"
 })
         ], style={**CARD_STYLE, "flex": "1", "marginBottom": "0",
